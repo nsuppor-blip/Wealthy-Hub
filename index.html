@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealthy Hub - ระบบบันทึกการเงินส่วนตัว</title>
+    <title>Wealthy Hub - ระบบบันทึกการเงินส่วนตัว (Dual Cloud)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        body {
-            font-family: 'Prompt', sans-serif;
-            background: linear-gradient(135deg, #070a13 0%, #0f172a 100%);
-            color: #f8fafc;
-            min-height: 100vh;
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        }
+        body { font-family: 'Prompt', sans-serif; background: linear-gradient(135deg, #070a13 0%, #0f172a 100%); color: #f8fafc; min-height: 100vh; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
         .glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
         .spinner { border: 3px solid rgba(255,255,255,0.1); border-top-color: #a855f7; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
         .nav-tab { padding: 0.5rem 1.25rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
         .nav-tab.active { background: linear-gradient(to right, #a855f7, #ec4899); color: white; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); }
         .nav-tab.inactive { background: rgba(255, 255, 255, 0.05); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.1); }
         .nav-tab.inactive:hover { background: rgba(255, 255, 255, 0.1); color: white; }
-        
         .view-section { display: none; }
         .view-section.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -50,7 +40,9 @@
                     <h1 class="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-amber-400">
                         <i class="fa-solid fa-bolt mr-2 text-purple-400"></i>Wealthy Hub
                     </h1>
-                    <p class="text-xs text-gray-400 mt-1">Smart Dashboard - ระบบบันทึก + Backup ลง Google Sheets</p>
+                    <p class="text-xs text-green-400 mt-1">
+                        <i class="fa-solid fa-cloud mr-1"></i> เชื่อมต่อ Supabase + Google Sheets แล้ว
+                    </p>
                 </div>
                 <button onclick="exportToCSV()" class="glass-panel px-4 py-2.5 rounded-xl text-xs text-green-400 hover:bg-green-400/10 transition flex items-center gap-2">
                     <i class="fa-solid fa-file-csv"></i> Export CSV
@@ -58,91 +50,97 @@
             </div>
 
             <nav class="flex gap-3 overflow-x-auto pb-2 mb-2">
-                <button onclick="switchTab('today')" id="tab-btn-today" class="nav-tab active"><i class="fa-solid fa-pen-to-square mr-1"></i> บันทึก (วันนี้)</button>
-                <button onclick="switchTab('daily')" id="tab-btn-daily" class="nav-tab inactive"><i class="fa-solid fa-calendar-day mr-1"></i> สรุปรายวัน</button>
-                <button onclick="switchTab('weekly')" id="tab-btn-weekly" class="nav-tab inactive"><i class="fa-solid fa-calendar-week mr-1"></i> สรุปรายสัปดาห์</button>
-                <button onclick="switchTab('monthly')" id="tab-btn-monthly" class="nav-tab inactive"><i class="fa-solid fa-calendar-days mr-1"></i> สรุปรายเดือน</button>
+                <button onclick="switchTab('today')" id="tab-btn-today" class="nav-tab active">บันทึก (วันนี้)</button>
+                <button onclick="switchTab('daily')" id="tab-btn-daily" class="nav-tab inactive">สรุปรายวัน</button>
+                <button onclick="switchTab('weekly')" id="tab-btn-weekly" class="nav-tab inactive">สรุปรายสัปดาห์</button>
+                <button onclick="switchTab('monthly')" id="tab-btn-monthly" class="nav-tab inactive">สรุปรายเดือน</button>
             </nav>
             
             <div id="historyFilters" class="hidden glass-panel p-3 rounded-xl mb-4 flex-col md:flex-row items-center gap-4 bg-slate-800/40">
-                <span class="text-sm font-bold text-white min-w-[120px]"><i class="fa-solid fa-magnifying-glass mr-2"></i>ระบุช่วงเวลา:</span>
-                <input type="date" id="picker-daily" class="bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full md:w-auto">
-                <input type="week" id="picker-weekly" class="hidden bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full md:w-auto">
-                <input type="month" id="picker-monthly" class="hidden bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full md:w-auto">
+                <span class="text-sm font-bold text-white min-w-[120px]">
+                    <i class="fa-solid fa-magnifying-glass mr-2"></i>ระบุช่วงเวลา:
+                </span>
+                <input type="date" id="picker-daily" class="bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white w-full md:w-auto">
+                <input type="week" id="picker-weekly" class="hidden bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white w-full md:w-auto">
+                <input type="month" id="picker-monthly" class="hidden bg-slate-900 border border-white/20 rounded-lg p-2 text-sm text-white w-full md:w-auto">
             </div>
         </header>
 
         <div id="chartsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="glass-panel p-5 rounded-2xl border border-white/5 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0"></div>
-                <h3 class="text-xs font-semibold text-gray-300 mb-3 text-center relative z-10">สัดส่วนรายจ่ายแยกหมวดหมู่</h3>
-                <div class="h-48 flex justify-center relative z-10"><canvas id="pieChart"></canvas></div>
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+                <h3 class="text-xs font-semibold text-gray-300 mb-3 text-center">สัดส่วนรายจ่ายแยกหมวดหมู่</h3>
+                <div class="h-48 flex justify-center">
+                    <canvas id="pieChart"></canvas>
+                </div>
             </div>
-            <div class="glass-panel p-5 rounded-2xl border border-white/5 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-bl from-blue-500/5 to-emerald-500/5 z-0"></div>
-                <h3 class="text-xs font-semibold text-gray-300 mb-3 text-center relative z-10">แนวโน้มยอดสะสมตามลำดับเวลา (ขวาสุดคือล่าสุด)</h3>
-                <div class="h-48 relative z-10"><canvas id="lineChart"></canvas></div>
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+                <h3 class="text-xs font-semibold text-gray-300 mb-3 text-center">แนวโน้มยอดสะสมตามลำดับเวลา</h3>
+                <div class="h-48">
+                    <canvas id="lineChart"></canvas>
+                </div>
             </div>
         </div>
 
         <div id="view-today" class="view-section active">
-            <div class="glass-panel p-4 rounded-2xl mb-6 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-l-4 border-l-purple-500 flex justify-between items-center">
-                <div>
-                    <h2 class="text-sm text-purple-300">หน้าปัจจุบันสำหรับบันทึกข้อมูล</h2>
-                    <div id="todayDateDisplay" class="text-xl md:text-2xl font-bold text-white mt-1">วันที่...</div>
-                </div>
+            <div class="glass-panel p-4 rounded-2xl mb-6 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-l-4 border-l-purple-500">
+                <h2 class="text-sm text-purple-300">หน้าปัจจุบันสำหรับบันทึกข้อมูล</h2>
+                <div id="todayDateDisplay" class="text-xl md:text-2xl font-bold text-white mt-1">วันที่...</div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1 space-y-6">
                     <div class="glass-panel p-6 rounded-2xl border border-purple-500/30 glow-purple">
-                        <div class="flex justify-between items-center mb-1">
-                            <h2 class="text-base font-bold text-purple-400"><i class="fa-solid fa-expand mr-2"></i>อัปโหลดสแกนสลิป</h2>
-                        </div>
-                        <p class="text-[10px] text-gray-400 mb-3">*ประมวลผลในเครื่อง 100% ฟรี ไม่มีวันเต็ม</p>
-                        
-                        <div class="relative bg-slate-900/40 border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-xl p-6 text-center transition group mb-4">
+                        <h2 class="text-base font-bold text-purple-400 mb-1">
+                            <i class="fa-solid fa-expand mr-2"></i>อัปโหลดสแกนสลิป
+                        </h2>
+                        <div class="relative bg-slate-900/40 border-2 border-dashed border-purple-500/30 rounded-xl p-6 text-center mb-4">
                             <input type="file" id="batchUploader" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                            <i class="fa-solid fa-images text-4xl text-purple-400/80 group-hover:scale-110 transition mb-2"></i>
-                            <p class="text-sm text-gray-200 font-medium">เลือกสลิปโอนเงินหลายไฟล์</p>
+                            <i class="fa-solid fa-images text-4xl text-purple-400/80 mb-2"></i>
+                            <p class="text-sm text-gray-200">เลือกสลิปโอนเงินหลายไฟล์</p>
                         </div>
                         
                         <div id="aiLoadingStatus" class="hidden flex items-center justify-center gap-3 bg-purple-900/40 border border-purple-500/30 p-3 rounded-xl mb-3">
-                            <div class="spinner"></div><span class="text-xs text-purple-300 font-medium" id="aiLoadingText">ระบบในเครื่องกำลังอ่านรูป...</span>
+                            <div class="spinner"></div>
+                            <span class="text-xs text-purple-300" id="aiLoadingText">ระบบกำลังอ่านรูป...</span>
                         </div>
                         
-                        <div id="bulkActionContainer" class="hidden bg-purple-950/40 p-3 rounded-xl border border-purple-500/40 mb-3 flex justify-between items-center gap-2">
-                            <span id="bulkStatusText" class="text-xs text-purple-300 font-medium">พบ 0 รายการ</span>
-                            <button type="button" id="saveAllSlipsBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg hover:scale-105 transition cursor-pointer z-20 relative font-medium">บันทึกทั้งหมด</button>
+                        <div id="bulkActionContainer" class="hidden bg-purple-950/40 p-3 rounded-xl border border-purple-500/40 mb-3 flex justify-between items-center">
+                            <span id="bulkStatusText" class="text-xs text-purple-300">พบ 0 รายการ</span>
+                            <button type="button" id="saveAllSlipsBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg z-20 relative">
+                                บันทึกทั้งหมด
+                            </button>
                         </div>
-                        <div id="pendingQueueArea" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                        
+                        <div id="pendingQueueArea" class="space-y-2 max-h-60 overflow-y-auto"></div>
                     </div>
 
-                    <div class="glass-panel p-6 rounded-2xl border border-white/5">
-                        <h2 class="text-sm font-semibold mb-4 text-pink-400"><i class="fa-solid fa-pen mr-2"></i>กรอกรายการด้วยตนเอง</h2>
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h2 class="text-sm font-semibold mb-4 text-pink-400">
+                            <i class="fa-solid fa-pen mr-2"></i>กรอกรายการด้วยตนเอง
+                        </h2>
                         <form id="manualForm" class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <input type="radio" name="mType" id="typeIncome" value="income" class="peer hidden">
-                                    <label for="typeIncome" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-white/5 bg-slate-900/50 cursor-pointer hover:bg-white/5 peer-checked:border-green-400 peer-checked:bg-green-400/10 group">
-                                        <i class="fa-solid fa-hand-holding-dollar text-xl mb-1 text-gray-500 group-hover:text-green-300 peer-checked:text-green-400"></i>
+                                    <label for="typeIncome" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-white/5 bg-slate-900/50 cursor-pointer peer-checked:border-green-400 peer-checked:bg-green-400/10">
                                         <span class="text-gray-400 font-semibold text-[11px] peer-checked:text-green-400">รายรับ</span>
                                     </label>
                                 </div>
                                 <div>
                                     <input type="radio" name="mType" id="typeExpense" value="expense" class="peer hidden" checked>
-                                    <label for="typeExpense" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-white/5 bg-slate-900/50 cursor-pointer hover:bg-white/5 peer-checked:border-red-400 peer-checked:bg-red-400/10 group">
-                                        <i class="fa-solid fa-wallet text-xl mb-1 text-gray-500 group-hover:text-red-300 peer-checked:text-red-400"></i>
+                                    <label for="typeExpense" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-white/5 bg-slate-900/50 cursor-pointer peer-checked:border-red-400 peer-checked:bg-red-400/10">
                                         <span class="text-gray-400 font-semibold text-[11px] peer-checked:text-red-400">รายจ่าย</span>
                                     </label>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 mt-2">
-                                <select id="mCategory" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none"></select>
-                                <input type="number" id="mAmount" placeholder="ยอดเงิน (฿)" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none" required>
+                                <select id="mCategory" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white"></select>
+                                <input type="number" id="mAmount" placeholder="ยอดเงิน (฿)" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white" required>
                             </div>
-                            <input type="text" id="mNote" placeholder="หมายเหตุ (เช่น ค่าข้าว)..." class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none">
-                            <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold py-3 rounded-xl transition shadow-lg">บันทึกรายการ</button>
+                            <input type="text" id="mNote" placeholder="หมายเหตุ (เช่น ค่าข้าว)..." class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white">
+                            <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold py-3 rounded-xl shadow-lg">
+                                บันทึกรายการ
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -164,7 +162,7 @@
                     </div>
 
                     <div class="glass-panel p-5 rounded-2xl h-[470px] overflow-hidden flex flex-col">
-                        <h3 class="text-sm font-bold text-white border-b border-white/10 pb-3 mb-3"><i class="fa-solid fa-list mr-2 text-purple-400"></i>รายการของวันนี้</h3>
+                        <h3 class="text-sm font-bold text-white border-b border-white/10 pb-3 mb-3">รายการของวันนี้</h3>
                         <div class="overflow-y-auto flex-1 pr-2">
                             <table class="w-full text-left text-xs">
                                 <thead>
@@ -173,8 +171,7 @@
                                         <th class="pb-2">หมวดหมู่</th>
                                         <th class="pb-2">หมายเหตุ</th>
                                         <th class="pb-2 text-right">ยอดเงิน</th>
-                                        <th class="pb-2 text-center">สลิป</th>
-                                        <th class="pb-2 text-center">ลบ</th>
+                                        <th class="pb-2 text-center">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="todayTableBody"></tbody>
@@ -195,17 +192,16 @@
                     <span class="text-xs text-gray-400 mb-1">รายจ่ายตามตัวกรอง</span>
                     <span id="histExpense" class="text-2xl font-bold text-red-400">฿0.00</span>
                 </div>
-                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-center items-center relative overflow-hidden">
-                    <span class="text-xs text-gray-300 font-medium mb-1 z-10">ยอดคงเหลือสุทธิ</span>
-                    <span id="histBalance" class="text-3xl font-black text-white z-10">฿0.00</span>
-                    <div class="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-amber-600/10 z-0"></div>
+                <div class="glass-panel p-5 rounded-2xl flex flex-col justify-center items-center">
+                    <span class="text-xs text-gray-300 font-medium mb-1">ยอดคงเหลือสุทธิ</span>
+                    <span id="histBalance" class="text-3xl font-black text-white">฿0.00</span>
                 </div>
             </div>
-
+            
             <div class="glass-panel p-5 rounded-2xl">
                 <div class="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
-                    <h3 class="text-sm font-bold text-white"><i class="fa-solid fa-clock-rotate-left mr-2 text-amber-400"></i>ประวัติรายการ</h3>
-                    <button onclick="clearAllData()" class="text-[11px] text-red-400 hover:text-red-300"><i class="fa-solid fa-trash-can mr-1"></i>ล้างประวัติทั้งหมด</button>
+                    <h3 class="text-sm font-bold text-white">ประวัติรายการ</h3>
+                    <button onclick="clearAllData()" class="text-[11px] text-red-400">ล้างประวัติทั้งหมด</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
@@ -225,380 +221,315 @@
         </div>
     </div>
 
-    <div id="imageModal" class="fixed inset-0 bg-black/90 hidden z-50 flex justify-center items-center p-4">
-        <span onclick="closeModal()" class="absolute top-4 right-4 text-white text-3xl cursor-pointer hover:text-red-400">&times;</span>
-        <img id="modalImage" class="max-w-full max-h-[90vh] rounded-lg border border-white/20 shadow-2xl">
-    </div>
-
     <script>
         // ==========================================
-        // ตั้งค่า Google Sheets API
+        // 1. Database Configuration
         // ==========================================
-        const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyCyVPWAW2R_VHptSB1VU_ILbwpAH1dqb4ejqFXi4AaTwpKikE295NGmy7qTD1UxvmIPg/exec";
+        const SUPABASE_URL = "https://ubwwagnlrhmyrxajqgbr.supabase.co";
+        const SUPABASE_KEY = "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVid3dhZ25scmhteXJ4YWpxZ2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNjU3MjAsImV4cCI6MjA5OTY0MTcyMH0.LYBX5jdvfbRucUjVYLrWblmr8yKJ8p662OiEy27_CFo";
+        
+        // แก้ไข: เปลี่ยนชื่อตัวแปรเป็น supabaseClient ป้องกัน error บล็อกระบบ
+        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCyVPWAW2R_VHptSB1VU_ILbwpAH1dqb4ejqFXi4AaTwpKikE295NGmy7qTD1UxvmIPg/exec"; 
 
-        function pushToGoogleSheet(txData) {
-    if (!GOOGLE_WEB_APP_URL) return;
-
-    const payload = {
-        id: txData.id,
-        date: txData.date,
-        type: txData.type,
-        category: txData.category,
-        amount: txData.amount,
-        note: txData.note
-    };
-
-    fetch(GOOGLE_WEB_APP_URL, {
-        method: 'POST',
-        mode: 'no-cors', // บังคับไม่ให้เบราว์เซอร์ฟ้อง Error ข้ามโดเมน
-        headers: {
-            // เปลี่ยนจาก application/json เป็น text/plain เพื่อเลี่ยงการถูก Google ปฏิเสธ
-            'Content-Type': 'text/plain;charset=utf-8' 
-        },
-        body: JSON.stringify(payload)
-    }).then(() => {
-        console.log("ส่งข้อมูลขึ้น Google Sheets แล้ว (ตรวจสอบผลที่ Sheet)");
-    }).catch(err => {
-        console.error("เชื่อมต่อ Google Sheets ล้มเหลว:", err);
-    });
-}
-
-
+        // ==========================================
+        // 2. UI State & Variables
+        // ==========================================
         let transactions = [];
         let categories = ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'เงินเดือน', 'อื่นๆ'];
+        
+        // โหลดข้อมูลเก่าจากเครื่องก่อนเสมอ
         try {
-            transactions = JSON.parse(localStorage.getItem('wealthy_txs')) || [];
+            const savedTxs = JSON.parse(localStorage.getItem('wealthy_txs'));
+            if (savedTxs && savedTxs.length > 0) {
+                transactions = savedTxs;
+            }
             const savedCats = JSON.parse(localStorage.getItem('wealthy_cats'));
-            if(savedCats && savedCats.length > 0) categories = savedCats;
-            if(!categories.includes('อื่นๆ')) categories.push('อื่นๆ');
-        } catch(e) {
-            console.warn("เข้าถึง LocalStorage ไม่ได้ (อาจติด Private Mode)");
+            if (savedCats && savedCats.length > 0) {
+                categories = savedCats;
+            }
+            if (!categories.includes('อื่นๆ')) {
+                categories.push('อื่นๆ');
+            }
+        } catch (e) {
+            console.error("Error loading local storage", e);
         }
         
         let pendingSlips = [];
         let activeTab = 'today'; 
         let tesseractWorker = null; 
-
-        const todayDateDisplay = document.getElementById('todayDateDisplay');
-        const pickerDaily = document.getElementById('picker-daily');
-        const pickerWeekly = document.getElementById('picker-weekly');
-        const pickerMonthly = document.getElementById('picker-monthly');
-        const historyFilters = document.getElementById('historyFilters');
-        const mCategorySelect = document.getElementById('mCategory');
-
         let pieChartInstance, lineChartInstance;
-        if (typeof Chart !== 'undefined') {
-            Chart.defaults.color = '#94a3b8';
-            Chart.defaults.font.family = "'Prompt', sans-serif";
+
+        // ==========================================
+        // 3. Database Functions
+        // ==========================================
+        async function pushToSupabase(txData) {
+            if (!supabaseClient) return; 
+            const { error } = await supabaseClient.from('transactions').insert([{ 
+                tx_id: txData.id, date: txData.date, type: txData.type, 
+                category: txData.category, amount: txData.amount, note: txData.note 
+            }]);
+            if (error) console.error("Supabase Error:", error);
         }
 
+        function pushToGoogleSheet(txData) {
+    // ปล่อยให้ส่งเป็น text/plain โดยอัตโนมัติเพื่อไม่ให้ติด CORS
+    fetch(GOOGLE_SCRIPT_URL, { 
+        method: 'POST',
+        body: JSON.stringify({
+            id: txData.id, 
+            date: txData.date,
+            type: txData.type, 
+            category: txData.category,
+            amount: txData.amount, 
+            note: txData.note
+        })
+    }).catch(err => console.error("Google Sheets Error:", err));
+}
+
+        async function fetchFromDatabase() {
+            if (!supabaseClient) {
+                updateUI();
+                return;
+            }
+            
+            const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
+                
+            if (!error && data) {
+                // ป้องกันไม่ให้ฐานข้อมูลว่างๆ บนคลาวด์มาลบทับข้อมูลในเครื่อง
+                if (data.length > 0) {
+                    transactions = data.map(item => ({
+                        id: item.tx_id, date: item.date, type: item.type, 
+                        category: item.category, amount: item.amount, note: item.note, images: []
+                    }));
+                    saveData(); 
+                }
+            }
+            updateUI(); 
+        }
+
+        // ==========================================
+        // 4. Core UI Functions
+        // ==========================================
         function initDates() {
             const now = new Date();
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            if(todayDateDisplay) todayDateDisplay.innerText = now.toLocaleDateString('th-TH', options);
+            const todayDisplay = document.getElementById('todayDateDisplay');
+            if (todayDisplay) todayDisplay.innerText = now.toLocaleDateString('th-TH', options);
             
-            const yy = now.getFullYear();
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yy = now.getFullYear(); 
+            const mm = String(now.getMonth() + 1).padStart(2, '0'); 
             const dd = String(now.getDate()).padStart(2, '0');
             
-            if(pickerDaily) pickerDaily.value = `${yy}-${mm}-${dd}`;
-            if(pickerMonthly) pickerMonthly.value = `${yy}-${mm}`;
-            if(pickerWeekly) pickerWeekly.value = getLocalISOWeek(now);
-        }
-
-        function getLocalISOWeek(dateObj) {
-            const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-            const dayNum = d.getDay() || 7;
-            d.setDate(d.getDate() + 4 - dayNum);
-            const yearStart = new Date(d.getFullYear(), 0, 1);
-            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+            const pD = document.getElementById('picker-daily');
+            const pW = document.getElementById('picker-weekly');
+            const pM = document.getElementById('picker-monthly');
+            
+            if (pD) pD.value = `${yy}-${mm}-${dd}`;
+            if (pM) pM.value = `${yy}-${mm}`;
+            if (pW) {
+                const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+                const wNo = Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 86400000) + 1) / 7);
+                pW.value = `${d.getFullYear()}-W${String(wNo).padStart(2, '0')}`;
+            }
         }
 
         function switchTab(tabName) {
             activeTab = tabName;
             ['today', 'daily', 'weekly', 'monthly'].forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
-                if(btn) {
-                    if(t === tabName) { btn.classList.remove('inactive'); btn.classList.add('active'); } 
-                    else { btn.classList.remove('active'); btn.classList.add('inactive'); }
+                if (btn) {
+                    btn.classList.toggle('active', t === tabName);
+                    btn.classList.toggle('inactive', t !== tabName);
                 }
             });
-
-            if(tabName === 'today') {
-                document.getElementById('view-today').classList.add('active');
-                document.getElementById('view-history').classList.remove('active');
-                historyFilters.classList.add('hidden');
-                historyFilters.classList.remove('flex');
+            
+            const vToday = document.getElementById('view-today');
+            const vHistory = document.getElementById('view-history');
+            const filters = document.getElementById('historyFilters');
+            
+            if (tabName === 'today') {
+                vToday.classList.add('active'); vHistory.classList.remove('active');
+                filters.classList.add('hidden'); filters.classList.remove('flex');
             } else {
-                document.getElementById('view-today').classList.remove('active');
-                document.getElementById('view-history').classList.add('active');
-                historyFilters.classList.remove('hidden');
-                historyFilters.classList.add('flex');
+                vToday.classList.remove('active'); vHistory.classList.add('active');
+                filters.classList.remove('hidden'); filters.classList.add('flex');
                 
-                pickerDaily.classList.add('hidden'); pickerWeekly.classList.add('hidden'); pickerMonthly.classList.add('hidden');
-                if(tabName === 'daily') pickerDaily.classList.remove('hidden'); 
-                if(tabName === 'weekly') pickerWeekly.classList.remove('hidden');
-                if(tabName === 'monthly') pickerMonthly.classList.remove('hidden');
+                ['daily', 'weekly', 'monthly'].forEach(type => {
+                    const el = document.getElementById(`picker-${type}`);
+                    if(el) el.classList.toggle('hidden', tabName !== type);
+                });
             }
             updateUI();
         }
 
-        if(pickerDaily) pickerDaily.addEventListener('change', updateUI);
-        if(pickerWeekly) pickerWeekly.addEventListener('change', updateUI);
-        if(pickerMonthly) pickerMonthly.addEventListener('change', updateUI);
+        ['daily', 'weekly', 'monthly'].forEach(type => {
+            const el = document.getElementById(`picker-${type}`);
+            if(el) el.addEventListener('change', updateUI);
+        });
 
         // ==========================================
-        // ระบบอัปโหลดสลิป
+        // 5. Image & AI Processing
         // ==========================================
         const batchUploader = document.getElementById('batchUploader');
-        if(batchUploader) {
+        if (batchUploader) {
             batchUploader.addEventListener('change', async function(e) {
                 const files = Array.from(e.target.files);
-                if(files.length === 0) return;
+                if (files.length === 0) return;
                 
-                if (typeof Tesseract === 'undefined') {
-                    alert('❌ ระบบสแกนไม่พร้อมใช้งาน (กรุณาเชื่อมต่ออินเทอร์เน็ตสำหรับการใช้งานครั้งแรก)');
-                    this.value = '';
-                    return;
-                }
-
                 document.getElementById('aiLoadingStatus').classList.remove('hidden');
-                
-                if(!tesseractWorker) {
-                    document.getElementById('aiLoadingText').innerText = "กำลังอุ่นเครื่องระบบสแกนในมือถือ/คอม...";
-                    try {
-                        tesseractWorker = await Tesseract.createWorker('tha+eng');
-                    } catch(err) {
-                        alert("โหลดระบบ AI ล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ต");
-                        document.getElementById('aiLoadingStatus').classList.add('hidden');
-                        return;
-                    }
+                if (!tesseractWorker) {
+                    document.getElementById('aiLoadingText').innerText = "กำลังอุ่นเครื่องระบบสแกน...";
+                    try { tesseractWorker = await Tesseract.createWorker('tha+eng'); } 
+                    catch (err) { alert("โหลดระบบ AI ล้มเหลว"); document.getElementById('aiLoadingStatus').classList.add('hidden'); return; }
                 }
 
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     document.getElementById('aiLoadingText').innerText = `กำลังอ่านตัวเลขสลิปใบที่ ${i+1}/${files.length}...`;
-                    
                     try {
-                        const base64Image = await fileToBase64(file);
+                        const base64Image = await new Promise(r => { const reader = new FileReader(); reader.onloadend = () => r(reader.result); reader.readAsDataURL(file); });
                         const ret = await tesseractWorker.recognize(base64Image);
-                        const text = ret.data.text;
-                        
                         let finalAmount = 0;
-                        const amountRegex = /\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g;
-                        const matches = text.match(amountRegex);
-                        if (matches) {
-                            finalAmount = Math.max(...matches.map(m => parseFloat(m.replace(/,/g, ''))));
-                        }
-
-                        const uniqueId = Math.floor(Math.random() * 1000000) + Date.now();
+                        const matches = ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g);
+                        if (matches) finalAmount = Math.max(...matches.map(m => parseFloat(m.replace(/,/g, ''))));
+                        
                         pendingSlips.push({
-                            tempId: uniqueId, 
-                            type: 'expense', 
-                            category: 'อื่นๆ', 
-                            amount: finalAmount, 
-                            note: finalAmount > 0 ? 'สแกนสำเร็จ' : 'ไม่พบยอดเงิน',
-                            date: new Date().toISOString(), 
-                            image: base64Image
+                            tempId: Date.now() + i, type: 'expense', category: 'อื่นๆ', amount: finalAmount, 
+                            note: finalAmount > 0 ? 'สแกนสำเร็จ' : 'ไม่พบยอดเงิน', date: new Date().toISOString(), image: base64Image
                         });
-                    } catch (err) {
-                        console.error(err);
-                        alert(`❌ อ่านรูปใบที่ ${i+1} ล้มเหลว`);
-                    }
+                    } catch (err) { console.error(err); }
                 }
                 
                 document.getElementById('aiLoadingStatus').classList.add('hidden');
-                this.value = ''; 
-                renderPendingQueue();
-            });
-        }
-
-        function fileToBase64(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(file);
+                this.value = ''; renderPendingQueue();
             });
         }
 
         function savePendingQueueState() {
-            const queueItems = document.querySelectorAll('.slip-queue-item');
-            queueItems.forEach(item => {
-                const tempId = parseInt(item.getAttribute('data-id'));
-                const amtInput = item.querySelector('.slip-amt-input');
-                const catInput = item.querySelector('.slip-cat-select');
-                
-                const slip = pendingSlips.find(s => s.tempId === tempId);
+            document.querySelectorAll('.slip-queue-item').forEach(item => {
+                const id = parseInt(item.getAttribute('data-id'));
+                const slip = pendingSlips.find(s => s.tempId === id);
                 if (slip) {
-                    if (amtInput) {
-                        const val = parseFloat(amtInput.value);
-                        slip.amount = isNaN(val) ? 0 : val;
-                    }
-                    if (catInput && catInput.value !== 'ADD_NEW') {
-                        slip.category = catInput.value;
-                    }
+                    const amt = item.querySelector('.slip-amt-input');
+                    const cat = item.querySelector('.slip-cat-select');
+                    if (amt) slip.amount = parseFloat(amt.value) || 0;
+                    if (cat && cat.value !== 'ADD_NEW') slip.category = cat.value;
                 }
             });
         }
 
         function renderPendingQueue() {
-            const area = document.getElementById('pendingQueueArea');
+            const area = document.getElementById('pendingQueueArea'); 
             const container = document.getElementById('bulkActionContainer');
             if (!area || !container) return;
-
+            
             if (pendingSlips.length === 0) { 
-                container.classList.add('hidden'); 
-                area.innerHTML = ''; 
-                return; 
+                container.classList.add('hidden'); area.innerHTML = ''; return; 
             }
-            container.classList.remove('hidden');
+            
+            container.classList.remove('hidden'); 
             document.getElementById('bulkStatusText').innerText = `รอตรวจ ${pendingSlips.length} รายการ`;
             area.innerHTML = '';
             
             pendingSlips.forEach(slip => {
+                let opts = categories.map(c => `<option value="${c}" ${c === slip.category ? 'selected' : ''}>${c}</option>`).join('');
                 area.innerHTML += `
-                    <div class="slip-queue-item bg-slate-800/80 p-2 rounded-xl border border-white/10 flex gap-2 items-center" data-id="${slip.tempId}">
-                        <img src="${slip.image}" class="w-10 h-10 rounded object-cover cursor-pointer border border-white/20" onclick="openModal('${slip.image}')">
+                    <div class="slip-queue-item bg-slate-800/80 p-2 rounded-xl flex gap-2 items-center" data-id="${slip.tempId}">
+                        <img src="${slip.image}" class="w-10 h-10 rounded object-cover border border-white/20">
                         <div class="flex-1 min-w-0 flex items-center">
-                            <input type="number" class="slip-amt-input w-16 bg-slate-900 text-white text-[11px] font-bold px-1 py-1 rounded border border-white/20" value="${slip.amount}">
-                            <select onchange="handleSlipCategoryChange(this, ${slip.tempId})" class="slip-cat-select w-24 bg-slate-900 text-[10px] text-gray-300 rounded border border-white/10 px-1 py-1 ml-1 cursor-pointer">
-                                ${categories.map(c => `<option value="${c}" ${c===slip.category?'selected':''}>${c}</option>`).join('')}
-                                <option value="ADD_NEW" class="text-purple-400 font-bold">+ เพิ่ม...</option>
+                            <input type="number" class="slip-amt-input w-16 bg-slate-900 text-white px-1 py-1 rounded" value="${slip.amount}">
+                            <select onchange="handleSlipCategoryChange(this, ${slip.tempId})" class="slip-cat-select w-24 bg-slate-900 text-gray-300 rounded px-1 py-1 ml-1">
+                                ${opts}<option value="ADD_NEW" class="text-purple-400 font-bold">+ เพิ่ม...</option>
                             </select>
                         </div>
-                        <button type="button" onclick="removePending(${slip.tempId})" class="text-gray-500 hover:text-red-400 px-1"><i class="fa-solid fa-xmark"></i></button>
+                        <button type="button" onclick="removePending(${slip.tempId})" class="text-gray-500 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
                     </div>`;
             });
         }
 
-        window.handleSlipCategoryChange = function(selectEl, tempId) {
+        window.handleSlipCategoryChange = function(el, id) {
             savePendingQueueState(); 
-            
-            const val = selectEl.value;
-            if (val === 'ADD_NEW') {
+            if (el.value === 'ADD_NEW') {
                 const n = prompt('ชื่อหมวดหมู่ใหม่:');
                 if (n && n.trim() !== '') {
-                    const newCat = n.trim();
-                    if (!categories.includes(newCat)) {
-                        categories.unshift(newCat);
-                        try {
-                            localStorage.setItem('wealthy_cats', JSON.stringify(categories));
-                        } catch(err) {}
-                    }
-                    loadCategories(); 
-                    
-                    const slip = pendingSlips.find(s => s.tempId === tempId);
-                    if (slip) slip.category = newCat;
-                } else {
-                    const slip = pendingSlips.find(s => s.tempId === tempId);
-                    selectEl.value = slip ? slip.category : 'อื่นๆ';
-                    return;
+                    if (!categories.includes(n.trim())) { categories.unshift(n.trim()); localStorage.setItem('wealthy_cats', JSON.stringify(categories)); }
+                    loadCategories(); const s = pendingSlips.find(x => x.tempId === id); if (s) s.category = n.trim();
                 }
             }
             renderPendingQueue(); 
         };
         
-        window.removePending = function(id) { 
-            savePendingQueueState(); 
-            pendingSlips = pendingSlips.filter(s => s.tempId !== id); 
-            renderPendingQueue(); 
-        };
+        window.removePending = function(id) { savePendingQueueState(); pendingSlips = pendingSlips.filter(s => s.tempId !== id); renderPendingQueue(); };
 
-        const saveAllSlipsBtn = document.getElementById('saveAllSlipsBtn');
-        if(saveAllSlipsBtn) {
-            saveAllSlipsBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                savePendingQueueState(); 
+        const saveAllBtn = document.getElementById('saveAllSlipsBtn');
+        if (saveAllBtn) {
+            saveAllBtn.addEventListener('click', async function(e) {
+                e.preventDefault(); savePendingQueueState(); 
+                if (pendingSlips.length === 0) return;
                 
-                if(pendingSlips.length === 0) return;
-                
-                pendingSlips.forEach(slip => {
-                    const newTx = { 
-                        id: Date.now() + Math.random(), 
-                        type: slip.type, 
-                        category: slip.category, 
-                        amount: slip.amount, 
-                        note: slip.note, 
-                        date: slip.date, 
-                        images: [slip.image] 
-                    };
-                    transactions.push(newTx);
-                    pushToGoogleSheet(newTx); // ส่งเข้า Google Sheets
-                });
-                
-                pendingSlips = []; 
-                saveData(); 
-                updateUI(); 
-                renderPendingQueue();
-                alert('✅ บันทึกรายการสลิปและส่งขึ้นระบบเรียบร้อยแล้วครับ!');
+                for (let s of pendingSlips) {
+                    const tx = { id: Date.now() + Math.random(), type: s.type, category: s.category, amount: s.amount, note: s.note, date: s.date, images: [s.image] };
+                    transactions.push(tx);
+                    await pushToSupabase(tx); pushToGoogleSheet(tx); 
+                }
+                pendingSlips = []; saveData(); updateUI(); renderPendingQueue();
+                alert('✅ บันทึกรายการสลิปเรียบร้อยแล้ว!');
             });
         }
 
-        // ==========================================
-        // ระบบกรอกฟอร์มแบบแมนนวล
-        // ==========================================
         const manualForm = document.getElementById('manualForm');
-        if(manualForm) {
-            manualForm.addEventListener('submit', function(e) {
+        if (manualForm) {
+            manualForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
                 const typeRadio = document.querySelector('input[name="mType"]:checked');
                 const mAmountInput = document.getElementById('mAmount');
                 const mNoteInput = document.getElementById('mNote');
+                const mCategorySelect = document.getElementById('mCategory');
                 
-                if (!typeRadio || !mAmountInput || !mCategorySelect) {
-                    alert("เกิดข้อผิดพลาดในการดึงข้อมูลฟอร์ม");
-                    return;
-                }
-
-                const newTx = {
-                    id: Date.now(), 
-                    type: typeRadio.value,
-                    category: mCategorySelect.value, 
-                    amount: parseFloat(mAmountInput.value) || 0,
-                    note: mNoteInput ? mNoteInput.value || '-' : '-', 
-                    date: new Date().toISOString(), 
-                    images: []
+                if (!typeRadio || !mAmountInput || !mCategorySelect) return;
+                
+                const tx = { 
+                    id: Date.now(), type: typeRadio.value, category: mCategorySelect.value, 
+                    amount: parseFloat(mAmountInput.value) || 0, note: mNoteInput.value || '-', 
+                    date: new Date().toISOString(), images: [] 
                 };
-
-                transactions.push(newTx);
-                pushToGoogleSheet(newTx); // ส่งเข้า Google Sheets
                 
-                this.reset(); 
-                const typeExpense = document.getElementById('typeExpense');
-                if(typeExpense) typeExpense.checked = true;
-                
-                saveData(); 
-                updateUI();
-                alert('✅ บันทึกรายการและส่งขึ้นระบบเรียบร้อย!');
+                transactions.push(tx);
+                await pushToSupabase(tx); pushToGoogleSheet(tx); 
+                this.reset(); document.getElementById('typeExpense').checked = true;
+                saveData(); updateUI(); 
+                alert('✅ บันทึกรายการเรียบร้อย!');
             });
         }
 
+        // ==========================================
+        // 6. Rendering & Charts
+        // ==========================================
         function updateUI() {
-            let filtered = [];
-            const now = new Date();
-            
+            let filtered = []; const now = new Date();
             if (activeTab === 'today') {
-                filtered = transactions.filter(tx => {
-                    const d = new Date(tx.date);
-                    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                filtered = transactions.filter(tx => { 
+                    const d = new Date(tx.date); 
+                    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); 
                 });
                 renderTodayView(filtered);
             } else {
-                if (activeTab === 'daily') {
-                    const sel = pickerDaily.value;
+                const pD = document.getElementById('picker-daily');
+                const pW = document.getElementById('picker-weekly');
+                const pM = document.getElementById('picker-monthly');
+                
+                if (activeTab === 'daily') { 
+                    filtered = transactions.filter(tx => { const d = new Date(tx.date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === pD.value; }); 
+                } else if (activeTab === 'weekly') { 
                     filtered = transactions.filter(tx => {
-                        const d = new Date(tx.date);
-                        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === sel;
-                    });
-                } else if (activeTab === 'weekly') {
-                    filtered = transactions.filter(tx => getLocalISOWeek(new Date(tx.date)) === pickerWeekly.value);
-                } else if (activeTab === 'monthly') {
-                    filtered = transactions.filter(tx => {
-                        const d = new Date(tx.date);
-                        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === pickerMonthly.value;
-                    });
+                        const d = new Date(tx.date); d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+                        const w = Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 86400000) + 1) / 7);
+                        return `${d.getFullYear()}-W${String(w).padStart(2, '0')}` === pW.value;
+                    }); 
+                } else if (activeTab === 'monthly') { 
+                    filtered = transactions.filter(tx => { const d = new Date(tx.date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === pM.value; }); 
                 }
                 renderHistoryView(filtered);
             }
@@ -607,239 +538,162 @@
 
         function renderCharts(data, tabType) {
             if (typeof Chart === 'undefined') return; 
+            Chart.defaults.color = '#94a3b8'; 
+            Chart.defaults.font.family = "'Prompt', sans-serif";
             
+            // 1. กราฟโดนัท (สัดส่วนรายจ่าย)
             const expMap = {}; 
-            data.filter(t=>t.type==='expense').forEach(t => expMap[t.category] = (expMap[t.category]||0) + t.amount);
+            data.filter(t => t.type === 'expense').forEach(t => { expMap[t.category] = (expMap[t.category] || 0) + t.amount; });
             
             const pieCanvas = document.getElementById('pieChart');
-            if(pieCanvas) {
-                if(pieChartInstance) pieChartInstance.destroy();
-                pieChartInstance = new Chart(pieCanvas.getContext('2d'), {
-                    type: 'doughnut',
+            if (pieCanvas) {
+                if (pieChartInstance) pieChartInstance.destroy();
+                pieChartInstance = new Chart(pieCanvas.getContext('2d'), { 
+                    type: 'doughnut', 
                     data: { 
-                        labels: Object.keys(expMap).length ? Object.keys(expMap) : ['ไม่มีข้อมูล'], 
-                        datasets: [{ data: Object.values(expMap).length ? Object.values(expMap) : [1], backgroundColor: ['#a855f7', '#ec4899', '#3b82f6', '#f59e0b', '#10b981', '#ef4444'], borderWidth:0 }] 
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels:{color:'#fff', font:{size:10}} } } }
+                        labels: Object.keys(expMap).length ? Object.keys(expMap) : ['-'], 
+                        datasets: [{ data: Object.values(expMap).length ? Object.values(expMap) : [1], backgroundColor: ['#a855f7', '#ec4899', '#3b82f6', '#f59e0b', '#10b981', '#ef4444'], borderWidth: 0 }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } } } } 
                 });
             }
 
+            // 2. กราฟเส้น (แก้ไข: เพิ่มจุดเริ่มต้นแกน Y ฝั่งซ้าย)
             const lineCanvas = document.getElementById('lineChart');
-            if(lineCanvas) {
-                if(lineChartInstance) lineChartInstance.destroy();
-                const chronological = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
-                const chartLabels = []; const incData = []; const expData = [];
-                let runningInc = 0; let runningExp = 0;
-
-                chronological.forEach((tx) => {
-                    const d = new Date(tx.date);
-                    let timeStr = tabType === 'today' ? 
-                        `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : 
-                        `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                    
-                    if(tx.type === 'income') runningInc += tx.amount; else runningExp += tx.amount;
-                    chartLabels.push(timeStr);
-                    incData.push(runningInc); expData.push(runningExp);
+            if (lineCanvas) {
+                if (lineChartInstance) lineChartInstance.destroy();
+                
+                const sorted = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
+                
+                // สร้างจุดเริ่มต้นไว้ที่ซ้ายสุด (แกน Y) ด้วยค่า 0 เสมอ เพื่อให้เส้นถูกลากเสมอแม้มี 1 รายการ
+                const labels = ['เริ่มต้น']; 
+                const incData = [0]; 
+                const expData = [0]; 
+                let rInc = 0, rExp = 0;
+                
+                sorted.forEach(tx => {
+                    const d = new Date(tx.date); 
+                    labels.push(tabType === 'today' 
+                        ? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` 
+                        : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                    );
+                    if (tx.type === 'income') rInc += tx.amount; else rExp += tx.amount;
+                    incData.push(rInc); 
+                    expData.push(rExp);
                 });
-
-                const maxPoints = 8; 
-                let displayLabels = [...chartLabels];
-                let displayInc = [...incData];
-                let displayExp = [...expData];
-                let displayChrono = [...chronological];
-
-                if (displayLabels.length > maxPoints) {
-                    displayLabels = displayLabels.slice(-maxPoints);
-                    displayInc = displayInc.slice(-maxPoints);
-                    displayExp = displayExp.slice(-maxPoints);
-                    displayChrono = displayChrono.slice(-maxPoints);
-                } else if (displayLabels.length < maxPoints && displayLabels.length > 0) {
-                    const padCount = maxPoints - displayLabels.length;
-                    const padLabels = Array(padCount).fill('');
-                    const padData = Array(padCount).fill(0); 
-                    
-                    displayLabels = [...padLabels, ...displayLabels];
-                    displayInc = [...padData, ...displayInc];
-                    displayExp = [...padData, ...displayExp];
-                    displayChrono = [...Array(padCount).fill(null), ...displayChrono];
-                }
-
-                if (displayLabels.length === 0) {
-                    displayLabels.push("ไม่มีข้อมูล"); displayInc.push(0); displayExp.push(0); displayChrono.push(null);
-                }
-
-                lineChartInstance = new Chart(lineCanvas.getContext('2d'), {
-                    type: 'line',
+                
+                lineChartInstance = new Chart(lineCanvas.getContext('2d'), { 
+                    type: 'line', 
                     data: { 
-                        labels: displayLabels, 
+                        labels: labels, 
                         datasets: [
-                            { label: 'รับ (สะสม)', data: displayInc, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)', fill: true, tension: 0.1, pointRadius: 4, pointHoverRadius: 6 }, 
-                            { label: 'จ่าย (สะสม)', data: displayExp, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.05)', fill: true, tension: 0.1, pointRadius: 4, pointHoverRadius: 6 }
+                            { label: 'รับ', data: incData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)', fill: true, tension: 0.1 }, 
+                            { label: 'จ่าย', data: expData, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.05)', fill: true, tension: 0.1 }
                         ] 
-                    },
-                    options: { 
-                        responsive: true, maintainAspectRatio: false, 
-                        plugins: { 
-                            legend: { display: true, labels:{color:'#fff', font:{size:10}} },
-                            tooltip: {
-                                filter: function(tooltipItem) { return displayChrono[tooltipItem.dataIndex] !== null; },
-                                callbacks: {
-                                    title: function(context) {
-                                        let idx = context[0].dataIndex;
-                                        if (displayChrono[idx]) { return displayLabels[idx] + ' (' + displayChrono[idx].category + ')'; }
-                                        return displayLabels[idx];
-                                    }
-                                }
-                            }
-                        }, 
-                        scales: { 
-                            y: { ticks:{color:'#64748b'}, grid:{color:'rgba(255,255,255,0.03)'} }, 
-                            x: { offset: false, ticks: { color:'#64748b', maxRotation: 0, minRotation: 0, autoSkip: false }, grid:{color:'rgba(255,255,255,0.03)'} } 
-                        } 
-                    }
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false } 
                 });
             }
         }
 
         function renderTodayView(data) {
-            const inc = data.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-            const exp = data.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-            if(document.getElementById('todayIncome')) document.getElementById('todayIncome').innerText = '฿' + inc.toLocaleString();
-            if(document.getElementById('todayExpense')) document.getElementById('todayExpense').innerText = '฿' + exp.toLocaleString();
-            if(document.getElementById('todayBalance')) document.getElementById('todayBalance').innerText = '฿' + (inc - exp).toLocaleString();
+            let inc = 0, exp = 0;
+            data.forEach(t => { if (t.type === 'income') inc += t.amount; else exp += t.amount; });
+            
+            document.getElementById('todayIncome').innerText = '฿' + inc.toLocaleString();
+            document.getElementById('todayExpense').innerText = '฿' + exp.toLocaleString();
+            document.getElementById('todayBalance').innerText = '฿' + (inc - exp).toLocaleString();
 
-            const tbody = document.getElementById('todayTableBody'); 
-            if(!tbody) return;
+            const tbody = document.getElementById('todayTableBody'); if (!tbody) return; 
             tbody.innerHTML = '';
             
-            if(data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500 text-xs">วันนี้ยังไม่มีการบันทึกรายการ</td></tr>`; return;
-            }
+            if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500 text-xs">วันนี้ยังไม่มีรายการ</td></tr>`; return; }
+            
             [...data].sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
-                const d = new Date(tx.date);
-                const timeStr = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+                const d = new Date(tx.date); 
+                const timeStr = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); 
                 const isInc = tx.type === 'income';
-                const img = tx.images[0] ? `<i class="fa-solid fa-image text-purple-400 cursor-pointer hover:scale-125 transition" onclick="openModal('${tx.images[0]}')"></i>` : '-';
                 tbody.innerHTML += `
-                    <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                    <tr class="border-b border-white/5 hover:bg-white/5">
                         <td class="py-2.5 text-gray-400">${timeStr}</td>
-                        <td class="py-2.5 font-medium text-white">${tx.category}</td>
+                        <td class="py-2.5 text-white">${tx.category}</td>
                         <td class="py-2.5 text-gray-400 truncate max-w-[80px]">${tx.note}</td>
-                        <td class="py-2.5 text-right font-semibold ${isInc ? 'text-green-400' : 'text-red-400'}">${isInc?'+':'-'}${tx.amount.toLocaleString()}</td>
-                        <td class="py-2.5 text-center">${img}</td>
-                        <td class="py-2.5 text-center"><button onclick="deleteTx(${tx.id})" class="text-red-500/50 hover:text-red-400"><i class="fa-solid fa-trash"></i></button></td>
+                        <td class="py-2.5 text-right ${isInc ? 'text-green-400' : 'text-red-400'}">${isInc ? '+' : '-'}${tx.amount.toLocaleString()}</td>
+                        <td class="py-2.5 text-center"><button onclick="deleteTx(${tx.id})" class="text-red-500/50 hover:text-red-500"><i class="fa-solid fa-trash"></i></button></td>
                     </tr>`;
             });
         }
 
         function renderHistoryView(data) {
-            const inc = data.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-            const exp = data.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-            if(document.getElementById('histIncome')) document.getElementById('histIncome').innerText = '฿' + inc.toLocaleString(undefined,{minimumFractionDigits:2});
-            if(document.getElementById('histExpense')) document.getElementById('histExpense').innerText = '฿' + exp.toLocaleString(undefined,{minimumFractionDigits:2});
-            if(document.getElementById('histBalance')) document.getElementById('histBalance').innerText = '฿' + (inc - exp).toLocaleString(undefined,{minimumFractionDigits:2});
+            let inc = 0, exp = 0;
+            data.forEach(t => { if (t.type === 'income') inc += t.amount; else exp += t.amount; });
+            
+            document.getElementById('histIncome').innerText = '฿' + inc.toLocaleString();
+            document.getElementById('histExpense').innerText = '฿' + exp.toLocaleString();
+            document.getElementById('histBalance').innerText = '฿' + (inc - exp).toLocaleString();
 
-            const tbody = document.getElementById('histTableBody'); 
-            if(!tbody) return;
+            const tbody = document.getElementById('histTableBody'); if (!tbody) return; 
             tbody.innerHTML = '';
             
-            if(data.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">ไม่พบรายการในช่วงเวลานี้</td></tr>`; return; }
+            if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">ไม่พบรายการ</td></tr>`; return; }
+            
             [...data].sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
                 const d = new Date(tx.date); const isInc = tx.type === 'income';
                 tbody.innerHTML += `
                     <tr class="border-b border-white/5 hover:bg-white/5">
-                        <td class="py-2.5 text-gray-400">${d.toLocaleDateString('th-TH', {day:'numeric', month:'short'})}</td>
+                        <td class="py-2.5 text-gray-400">${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</td>
                         <td class="py-2.5 text-white">${tx.category}</td>
                         <td class="py-2.5 text-gray-400 truncate max-w-[120px]">${tx.note}</td>
-                        <td class="py-2.5 text-right font-semibold ${isInc ? 'text-green-400' : 'text-red-400'}">${isInc?'+':'-'}${tx.amount.toLocaleString()}</td>
-                        <td class="py-2.5 text-center">
-                            ${tx.images[0] ? `<button onclick="openModal('${tx.images[0]}')" class="text-purple-400 hover:text-purple-300 mr-2"><i class="fa-solid fa-image"></i></button>` : ''}
-                            <button onclick="deleteTx(${tx.id})" class="text-red-500/50 hover:text-red-400"><i class="fa-solid fa-trash"></i></button>
-                        </td>
+                        <td class="py-2.5 text-right ${isInc ? 'text-green-400' : 'text-red-400'}">${isInc ? '+' : '-'}${tx.amount.toLocaleString()}</td>
+                        <td class="py-2.5 text-center"><button onclick="deleteTx(${tx.id})" class="text-red-500/50 hover:text-red-500"><i class="fa-solid fa-trash"></i></button></td>
                     </tr>`;
             });
         }
 
+        // ==========================================
+        // 7. Utilities
+        // ==========================================
         function loadCategories() {
-            if(!mCategorySelect) return;
-            mCategorySelect.innerHTML = ''; 
-            categories.forEach(cat => mCategorySelect.innerHTML += `<option value="${cat}">${cat}</option>`);
-            mCategorySelect.innerHTML += `<option value="ADD_NEW" class="text-purple-400 font-bold">+ เพิ่ม...</option>`;
+            const sel = document.getElementById('mCategory'); if (!sel) return; 
+            sel.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="ADD_NEW" class="text-purple-400 font-bold">+ เพิ่ม...</option>`;
         }
         
-        if(mCategorySelect) {
-            mCategorySelect.addEventListener('change', function(e) {
-                if(e.target.value === 'ADD_NEW') {
-                    const n = prompt('ชื่อหมวดหมู่ใหม่:');
-                    if(n && n.trim()!=='') { 
-                        categories.unshift(n.trim()); 
-                        try {
-                            localStorage.setItem('wealthy_cats', JSON.stringify(categories)); 
-                        } catch(err) {}
-                    }
-                    loadCategories();
-                    renderPendingQueue(); 
-                }
-            });
+        const catSel = document.getElementById('mCategory');
+        if (catSel) { catSel.addEventListener('change', function(e) { if (e.target.value === 'ADD_NEW') { const n = prompt('ชื่อหมวดหมู่ใหม่:'); if (n && n.trim() !== '') { categories.unshift(n.trim()); localStorage.setItem('wealthy_cats', JSON.stringify(categories)); } loadCategories(); } }); }
+
+        function saveData() { localStorage.setItem('wealthy_txs', JSON.stringify(transactions)); }
+        
+        window.deleteTx = async function(id) { 
+            if (confirm('ลบรายการนี้ใช่ไหม?')) { 
+                transactions = transactions.filter(t => t.id !== id); saveData(); updateUI(); 
+                if (supabaseClient) await supabaseClient.from('transactions').delete().eq('tx_id', id);
+            } 
         }
 
-        function saveData() { 
-            try {
-                localStorage.setItem('wealthy_txs', JSON.stringify(transactions)); 
-            } catch(e) {
-                console.warn('ไม่สามารถบันทึกข้อมูลลง LocalStorage ได้ (อาจเป็นเพราะใช้งานบนโหมด Private/Incognito)');
-            }
+        window.clearAllData = async function() { 
+            if (confirm('ระวัง! คุณต้องการล้างประวัติทั้งหมดใช่ไหม?')) { 
+                transactions = []; saveData(); updateUI(); 
+                if (supabaseClient) await supabaseClient.from('transactions').delete().neq('tx_id', 0);
+            } 
         }
-        
-        window.deleteTx = function(id) { 
-            if(confirm('ลบรายการนี้? (การลบจะเกิดเฉพาะหน้าเว็บเท่านั้น จะไม่ลบใน Google Sheets นะครับ)')){ transactions = transactions.filter(t=>t.id!==id); saveData(); updateUI(); } 
-        }
-        window.clearAllData = function() { 
-            if(confirm('ล้างข้อมูลทั้งหมดใช่ไหม?')){ transactions = []; saveData(); updateUI(); } 
-        }
-        window.openModal = function(src) { 
-            const img = document.getElementById('modalImage');
-            const mod = document.getElementById('imageModal');
-            if(img && mod) { img.src = src; mod.classList.remove('hidden'); }
-        }
-        window.closeModal = function() { 
-            const mod = document.getElementById('imageModal');
-            if(mod) mod.classList.add('hidden'); 
-        }
-        
-        // Export CSV ฉบับสมบูรณ์ (ใช้ Blob แก้ปัญหาค้าง)
+
         window.exportToCSV = function() {
-            if (transactions.length === 0) {
-                alert("ไม่มีข้อมูลสำหรับส่งออก");
-                return;
-            }
-            
-            let csvContent = "วันที่/เวลา,ประเภท,หมวดหมู่,หมายเหตุ,จำนวนเงิน\n";
+            if (transactions.length === 0) return alert("ไม่มีข้อมูล");
+            let csv = "วันที่/เวลา,ประเภท,หมวดหมู่,หมายเหตุ,จำนวนเงิน\n";
             transactions.forEach(tx => { 
                 const d = new Date(tx.date); 
-                const dateStr = d.toLocaleDateString('th-TH') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-                const typeStr = tx.type === 'income' ? 'รายรับ' : 'รายจ่าย';
-                const noteStr = tx.note.replace(/"/g, '""'); 
-                
-                csvContent += `"${dateStr}","${typeStr}","${tx.category}","${noteStr}","${tx.amount}"\n`; 
+                csv += `"${d.toLocaleDateString('th-TH')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}","${tx.type === 'income' ? 'รายรับ' : 'รายจ่าย'}","${tx.category}","${tx.note.replace(/"/g, '""')}","${tx.amount}"\n`; 
             });
-
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            
-            const link = document.createElement("a"); 
-            link.setAttribute("href", url); 
-            link.setAttribute("download", `wealthy_hub_export_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link); 
-            
-            link.click(); 
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url); 
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' })); link.download = `wealthy_hub_export.csv`; link.click();
         }
 
+        // ==========================================
+        // 8. Initialization (Start Here)
+        // ==========================================
         initDates(); 
         loadCategories(); 
-        updateUI();
+        fetchFromDatabase(); 
+        
     </script>
 </body>
 </html>
