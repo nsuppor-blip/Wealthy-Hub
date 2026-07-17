@@ -11,12 +11,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Prompt', sans-serif; background: linear-gradient(135deg, #070a13 0%, #0f172a 100%); color: #f8fafc; min-height: 100vh; }
         .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
-        .glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+        .glow-purple { box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); }
+        .glow-income-premium { box-shadow: 0 0 30px rgba(16, 185, 129, 0.25), inset 0 0 12px rgba(255, 255, 255, 0.1); }
+        .glow-expense-premium { box-shadow: 0 0 30px rgba(239, 68, 68, 0.25), inset 0 0 12px rgba(255, 255, 255, 0.1); }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
@@ -146,22 +148,52 @@
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="glass-panel p-4 rounded-xl text-center">
-                            <span class="text-[10px] text-gray-400 block mb-1">รับวันนี้</span>
-                            <span id="todayIncome" class="text-lg font-bold text-green-400">฿0</span>
+                    <div class="flex flex-col gap-5">
+                        <!-- แถวบน: รายรับวันนี้ / รายจ่ายวันนี้ -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="glass-panel p-4 rounded-xl text-center border border-green-500/20">
+                                <span class="text-[11px] text-gray-400 block mb-1">
+                                    <i class="fa-solid fa-calendar-day text-green-400 mr-1"></i>รายรับวันนี้
+                                </span>
+                                <span id="todayIncome" class="text-xl font-bold text-green-400">฿0</span>
+                            </div>
+                            <div class="glass-panel p-4 rounded-xl text-center border border-red-500/20">
+                                <span class="text-[11px] text-gray-400 block mb-1">
+                                    <i class="fa-solid fa-calendar-day text-red-400 mr-1"></i>รายจ่ายวันนี้
+                                </span>
+                                <span id="todayExpense" class="text-xl font-bold text-red-400">฿0</span>
+                            </div>
                         </div>
-                        <div class="glass-panel p-4 rounded-xl text-center">
-                            <span class="text-[10px] text-gray-400 block mb-1">จ่ายวันนี้</span>
-                            <span id="todayExpense" class="text-lg font-bold text-red-400">฿0</span>
+                        
+                        <!-- แถวล่าง: แบ่งเป็น 2 ช่อง รายรับสุทธิทั้งหมด / รายจ่ายสุทธิทั้งหมด (เด่นพิเศษ) -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- ช่องรายรับสุทธิทั้งหมด -->
+                            <div class="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 p-5 rounded-2xl text-center border border-emerald-500/40 glow-income-premium relative overflow-hidden">
+                                <span class="text-xs text-emerald-300 font-semibold tracking-wide block mb-1">
+                                    <i class="fa-solid fa-money-bill-trend-up mr-1.5 text-emerald-400"></i>รายรับสุทธิทั้งหมด
+                                </span>
+                                <span id="totalIncome" class="text-2xl md:text-3xl font-black text-emerald-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">฿0</span>
+                            </div>
+                            
+                            <!-- ช่องรายจ่ายสุทธิทั้งหมด -->
+                            <div class="bg-gradient-to-br from-slate-900 via-rose-950 to-slate-950 p-5 rounded-2xl text-center border border-rose-500/40 glow-expense-premium relative overflow-hidden">
+                                <span class="text-xs text-rose-300 font-semibold tracking-wide block mb-1">
+                                    <i class="fa-solid fa-money-bill-transfer mr-1.5 text-rose-400"></i>รายจ่ายสุทธิทั้งหมด
+                                </span>
+                                <span id="totalExpense" class="text-2xl md:text-3xl font-black text-rose-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">฿0</span>
+                            </div>
                         </div>
-                        <div class="glass-panel p-4 rounded-xl text-center bg-white/5">
-                            <span class="text-[10px] text-gray-300 block mb-1">คงเหลือวันนี้</span>
-                            <span id="todayBalance" class="text-xl font-bold text-white">฿0</span>
+
+                        <!-- แถบสรุปคงเหลือสุทธิ (เงินเหลือจริงๆ ในกระเป๋าปัจจุบัน) -->
+                        <div class="glass-panel py-3 px-5 rounded-xl flex justify-between items-center bg-slate-900/80 border border-purple-500/30">
+                            <span class="text-xs text-purple-200 font-medium">
+                                <i class="fa-solid fa-wallet text-purple-400 mr-2"></i>เงินคงเหลือสุทธิในระบบตอนนี้ :
+                            </span>
+                            <span id="netBalance" class="text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-amber-300">฿0</span>
                         </div>
                     </div>
 
-                    <div class="glass-panel p-5 rounded-2xl h-[470px] overflow-hidden flex flex-col">
+                    <div class="glass-panel p-5 rounded-2xl h-[420px] overflow-hidden flex flex-col">
                         <h3 class="text-sm font-bold text-white border-b border-white/10 pb-3 mb-3">รายการของวันนี้</h3>
                         <div class="overflow-y-auto flex-1 pr-2">
                             <table class="w-full text-left text-xs">
@@ -228,7 +260,6 @@
         const SUPABASE_URL = "https://ubwwagnlrhmyrxajqgbr.supabase.co";
         const SUPABASE_KEY = "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVid3dhZ25scmhteXJ4YWpxZ2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNjU3MjAsImV4cCI6MjA5OTY0MTcyMH0.LYBX5jdvfbRucUjVYLrWblmr8yKJ8p662OiEy27_CFo";
         
-        // แก้ไข: เปลี่ยนชื่อตัวแปรเป็น supabaseClient ป้องกัน error บล็อกระบบ
         const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCyVPWAW2R_VHptSB1VU_ILbwpAH1dqb4ejqFXi4AaTwpKikE295NGmy7qTD1UxvmIPg/exec"; 
 
@@ -238,7 +269,6 @@
         let transactions = [];
         let categories = ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'เงินเดือน', 'อื่นๆ'];
         
-        // โหลดข้อมูลเก่าจากเครื่องก่อนเสมอ
         try {
             const savedTxs = JSON.parse(localStorage.getItem('wealthy_txs'));
             if (savedTxs && savedTxs.length > 0) {
@@ -257,7 +287,6 @@
         
         let pendingSlips = [];
         let activeTab = 'today'; 
-        let tesseractWorker = null; 
         let pieChartInstance, lineChartInstance;
 
         // ==========================================
@@ -273,19 +302,18 @@
         }
 
         function pushToGoogleSheet(txData) {
-    // ปล่อยให้ส่งเป็น text/plain โดยอัตโนมัติเพื่อไม่ให้ติด CORS
-    fetch(GOOGLE_SCRIPT_URL, { 
-        method: 'POST',
-        body: JSON.stringify({
-            id: txData.id, 
-            date: txData.date,
-            type: txData.type, 
-            category: txData.category,
-            amount: txData.amount, 
-            note: txData.note
-        })
-    }).catch(err => console.error("Google Sheets Error:", err));
-}
+            fetch(GOOGLE_SCRIPT_URL, { 
+                method: 'POST',
+                body: JSON.stringify({
+                    id: txData.id, 
+                    date: txData.date,
+                    type: txData.type, 
+                    category: txData.category,
+                    amount: txData.amount, 
+                    note: txData.note
+                })
+            }).catch(err => console.error("Google Sheets Error:", err));
+        }
 
         async function fetchFromDatabase() {
             if (!supabaseClient) {
@@ -296,7 +324,6 @@
             const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
                 
             if (!error && data) {
-                // ป้องกันไม่ให้ฐานข้อมูลว่างๆ บนคลาวด์มาลบทับข้อมูลในเครื่อง
                 if (data.length > 0) {
                     transactions = data.map(item => ({
                         id: item.tx_id, date: item.date, type: item.type, 
@@ -379,37 +406,41 @@
                 if (files.length === 0) return;
                 
                 document.getElementById('aiLoadingStatus').classList.remove('hidden');
-                if (!tesseractWorker) {
-                    document.getElementById('aiLoadingText').innerText = "กำลังอุ่นเครื่องระบบสแกน...";
-                    try { tesseractWorker = await Tesseract.createWorker('tha+eng'); } 
-                    catch (err) { alert("โหลดระบบ AI ล้มเหลว"); document.getElementById('aiLoadingStatus').classList.add('hidden'); return; }
-                }
+                document.getElementById('aiLoadingText').innerText = "กำลังอ่านข้อมูลไฟล์สลิป...";
 
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     document.getElementById('aiLoadingText').innerText = `กำลังอ่านตัวเลขสลิปใบที่ ${i+1}/${files.length}...`;
                     try {
-                        const base64Image = await new Promise(r => { const reader = new FileReader(); reader.onloadend = () => r(reader.result); reader.readAsDataURL(file); });
-                        const ret = await tesseractWorker.recognize(base64Image);
+                        const base64Image = await new Promise(r => { 
+                            const reader = new FileReader(); 
+                            reader.onloadend = () => r(reader.result); 
+                            reader.readAsDataURL(file); 
+                        });
+                        
+                        const ret = await Tesseract.recognize(base64Image, 'tha+eng');
                         let finalAmount = 0;
-                        const matches = ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g);
+                        const matches = ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d.2\b/g) || ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g);
                         if (matches) finalAmount = Math.max(...matches.map(m => parseFloat(m.replace(/,/g, ''))));
                         
                         pendingSlips.push({
-                            tempId: Date.now() + i, type: 'expense', category: 'อื่นๆ', amount: finalAmount, 
+                            tempId: Date.now() + i + Math.random(), type: 'expense', category: 'อื่นๆ', amount: finalAmount, 
                             note: finalAmount > 0 ? 'สแกนสำเร็จ' : 'ไม่พบยอดเงิน', date: new Date().toISOString(), image: base64Image
                         });
-                    } catch (err) { console.error(err); }
+                    } catch (err) { 
+                        console.error("OCR Error: ", err); 
+                    }
                 }
                 
                 document.getElementById('aiLoadingStatus').classList.add('hidden');
-                this.value = ''; renderPendingQueue();
+                this.value = ''; 
+                renderPendingQueue();
             });
         }
 
         function savePendingQueueState() {
             document.querySelectorAll('.slip-queue-item').forEach(item => {
-                const id = parseInt(item.getAttribute('data-id'));
+                const id = parseFloat(item.getAttribute('data-id'));
                 const slip = pendingSlips.find(s => s.tempId === id);
                 if (slip) {
                     const amt = item.querySelector('.slip-amt-input');
@@ -454,27 +485,43 @@
             if (el.value === 'ADD_NEW') {
                 const n = prompt('ชื่อหมวดหมู่ใหม่:');
                 if (n && n.trim() !== '') {
-                    if (!categories.includes(n.trim())) { categories.unshift(n.trim()); localStorage.setItem('wealthy_cats', JSON.stringify(categories)); }
-                    loadCategories(); const s = pendingSlips.find(x => x.tempId === id); if (s) s.category = n.trim();
+                    if (!categories.includes(n.trim())) { 
+                        categories.unshift(n.trim()); 
+                        localStorage.setItem('wealthy_cats', JSON.stringify(categories)); 
+                    }
+                    loadCategories(); 
+                    const s = pendingSlips.find(x => x.tempId === id); 
+                    if (s) s.category = n.trim();
+                } else {
+                    el.value = categories[0];
                 }
             }
             renderPendingQueue(); 
         };
         
-        window.removePending = function(id) { savePendingQueueState(); pendingSlips = pendingSlips.filter(s => s.tempId !== id); renderPendingQueue(); };
+        window.removePending = function(id) { 
+            savePendingQueueState(); 
+            pendingSlips = pendingSlips.filter(s => s.tempId !== id); 
+            renderPendingQueue(); 
+        };
 
         const saveAllBtn = document.getElementById('saveAllSlipsBtn');
         if (saveAllBtn) {
             saveAllBtn.addEventListener('click', async function(e) {
-                e.preventDefault(); savePendingQueueState(); 
+                e.preventDefault(); 
+                savePendingQueueState(); 
                 if (pendingSlips.length === 0) return;
                 
                 for (let s of pendingSlips) {
                     const tx = { id: Date.now() + Math.random(), type: s.type, category: s.category, amount: s.amount, note: s.note, date: s.date, images: [s.image] };
                     transactions.push(tx);
-                    await pushToSupabase(tx); pushToGoogleSheet(tx); 
+                    await pushToSupabase(tx); 
+                    pushToGoogleSheet(tx); 
                 }
-                pendingSlips = []; saveData(); updateUI(); renderPendingQueue();
+                pendingSlips = []; 
+                saveData(); 
+                updateUI(); 
+                renderPendingQueue();
                 alert('✅ บันทึกรายการสลิปเรียบร้อยแล้ว!');
             });
         }
@@ -497,9 +544,12 @@
                 };
                 
                 transactions.push(tx);
-                await pushToSupabase(tx); pushToGoogleSheet(tx); 
-                this.reset(); document.getElementById('typeExpense').checked = true;
-                saveData(); updateUI(); 
+                await pushToSupabase(tx); 
+                pushToGoogleSheet(tx); 
+                this.reset(); 
+                document.getElementById('typeExpense').checked = true;
+                saveData(); 
+                updateUI(); 
                 alert('✅ บันทึกรายการเรียบร้อย!');
             });
         }
@@ -508,7 +558,8 @@
         // 6. Rendering & Charts
         // ==========================================
         function updateUI() {
-            let filtered = []; const now = new Date();
+            let filtered = []; 
+            const now = new Date();
             if (activeTab === 'today') {
                 filtered = transactions.filter(tx => { 
                     const d = new Date(tx.date); 
@@ -541,7 +592,6 @@
             Chart.defaults.color = '#94a3b8'; 
             Chart.defaults.font.family = "'Prompt', sans-serif";
             
-            // 1. กราฟโดนัท (สัดส่วนรายจ่าย)
             const expMap = {}; 
             data.filter(t => t.type === 'expense').forEach(t => { expMap[t.category] = (expMap[t.category] || 0) + t.amount; });
             
@@ -551,21 +601,18 @@
                 pieChartInstance = new Chart(pieCanvas.getContext('2d'), { 
                     type: 'doughnut', 
                     data: { 
-                        labels: Object.keys(expMap).length ? Object.keys(expMap) : ['-'], 
+                        labels: Object.keys(expMap).length ? Object.keys(expMap) : ['ไม่มีข้อมูลรายจ่าย'], 
                         datasets: [{ data: Object.values(expMap).length ? Object.values(expMap) : [1], backgroundColor: ['#a855f7', '#ec4899', '#3b82f6', '#f59e0b', '#10b981', '#ef4444'], borderWidth: 0 }] 
                     }, 
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#fff', font: { size: 10 } } } } } 
                 });
             }
 
-            // 2. กราฟเส้น (แก้ไข: เพิ่มจุดเริ่มต้นแกน Y ฝั่งซ้าย)
             const lineCanvas = document.getElementById('lineChart');
             if (lineCanvas) {
                 if (lineChartInstance) lineChartInstance.destroy();
                 
                 const sorted = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
-                
-                // สร้างจุดเริ่มต้นไว้ที่ซ้ายสุด (แกน Y) ด้วยค่า 0 เสมอ เพื่อให้เส้นถูกลากเสมอแม้มี 1 รายการ
                 const labels = ['เริ่มต้น']; 
                 const incData = [0]; 
                 const expData = [0]; 
@@ -597,12 +644,32 @@
         }
 
         function renderTodayView(data) {
-            let inc = 0, exp = 0;
-            data.forEach(t => { if (t.type === 'income') inc += t.amount; else exp += t.amount; });
+            // 1. คำนวณรายรับและรายจ่ายแยกของวันนี้
+            let todayInc = 0;
+            let todayExp = 0;
+            data.forEach(t => { 
+                if (t.type === 'income') todayInc += t.amount; 
+                else todayExp += t.amount;
+            });
             
-            document.getElementById('todayIncome').innerText = '฿' + inc.toLocaleString();
-            document.getElementById('todayExpense').innerText = '฿' + exp.toLocaleString();
-            document.getElementById('todayBalance').innerText = '฿' + (inc - exp).toLocaleString();
+            // 2. คำนวณรายรับทั้งหมด และรายจ่ายทั้งหมดในระบบทั้งหมด (สะสมตั้งแต่ต้น)
+            let totalAllInc = 0;
+            let totalAllExp = 0;
+            transactions.forEach(t => {
+                if (t.type === 'income') totalAllInc += t.amount;
+                else totalAllExp += t.amount;
+            });
+            
+            // 3. สรุปตัวเลขลงฟิลด์หน้าแรก
+            document.getElementById('todayIncome').innerText = '฿' + todayInc.toLocaleString();
+            document.getElementById('todayExpense').innerText = '฿' + todayExp.toLocaleString();
+            
+            // ช่องสุทธิที่แยกเป็น 2 ฝั่ง (รับทั้งหมด / จ่ายทั้งหมด)
+            document.getElementById('totalIncome').innerText = '฿' + totalAllInc.toLocaleString();
+            document.getElementById('totalExpense').innerText = '฿' + totalAllExp.toLocaleString();
+            
+            // คำนวณยอดเงินคงเหลือสุทธิจริงในระบบปัจจุบัน
+            document.getElementById('netBalance').innerText = '฿' + (totalAllInc - totalAllExp).toLocaleString();
 
             const tbody = document.getElementById('todayTableBody'); if (!tbody) return; 
             tbody.innerHTML = '';
@@ -659,7 +726,23 @@
         }
         
         const catSel = document.getElementById('mCategory');
-        if (catSel) { catSel.addEventListener('change', function(e) { if (e.target.value === 'ADD_NEW') { const n = prompt('ชื่อหมวดหมู่ใหม่:'); if (n && n.trim() !== '') { categories.unshift(n.trim()); localStorage.setItem('wealthy_cats', JSON.stringify(categories)); } loadCategories(); } }); }
+        if (catSel) { 
+            catSel.addEventListener('change', function(e) { 
+                if (e.target.value === 'ADD_NEW') { 
+                    const n = prompt('ชื่อหมวดหมู่ใหม่:'); 
+                    if (n && n.trim() !== '') { 
+                        if (!categories.includes(n.trim())) {
+                            categories.unshift(n.trim()); 
+                            localStorage.setItem('wealthy_cats', JSON.stringify(categories)); 
+                        }
+                        loadCategories(); 
+                        catSel.value = n.trim();
+                    } else {
+                        catSel.value = categories[0];
+                    }
+                } 
+            }); 
+        }
 
         function saveData() { localStorage.setItem('wealthy_txs', JSON.stringify(transactions)); }
         
@@ -678,7 +761,7 @@
         }
 
         window.exportToCSV = function() {
-            if (transactions.length === 0) return alert("ไม่มีข้อมูล");
+            if (transactions.length === 0) return alert("ไม่มีข้อมูลสำหรับการดาวน์โหลด");
             let csv = "วันที่/เวลา,ประเภท,หมวดหมู่,หมายเหตุ,จำนวนเงิน\n";
             transactions.forEach(tx => { 
                 const d = new Date(tx.date); 
@@ -688,7 +771,7 @@
         }
 
         // ==========================================
-        // 8. Initialization (Start Here)
+        // 8. Initialization
         // ==========================================
         initDates(); 
         loadCategories(); 
