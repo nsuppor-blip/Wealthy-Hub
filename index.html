@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealthy Hub - ระบบบันทึกการเงินส่วนตัว (Dual Cloud)</title>
+    <title>Wealthy Hub - ระบบบันทึกการเงินส่วนตัว (Local Storage)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -44,7 +43,7 @@
                         <i class="fa-solid fa-bolt mr-2 text-purple-400"></i>Wealthy Hub
                     </h1>
                     <p class="text-xs text-green-400 mt-1">
-                        <i class="fa-solid fa-cloud mr-1"></i> เชื่อมต่อ Supabase + Google Sheets แล้ว
+                        <i class="fa-solid fa-hard-drive mr-1"></i> บันทึกข้อมูลลงในเครื่องเท่านั้น (Local Storage 100%)
                     </p>
                 </div>
                 <button onclick="exportToCSV()" class="glass-panel px-4 py-2.5 rounded-xl text-xs text-green-400 hover:bg-green-400/10 transition flex items-center gap-2">
@@ -264,7 +263,7 @@
             <div class="glass-panel p-5 rounded-2xl">
                 <div class="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
                     <h3 class="text-sm font-bold text-white">ประวัติรายการ</h3>
-                    <button onclick="clearAllData()" class="text-[11px] text-red-400">ล้างประวัติทั้งหมด</button>
+                    <button onclick="clearAllData()" class="text-[11px] text-red-400 hover:underline">ล้างประวัติทั้งหมด</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
@@ -287,27 +286,18 @@
     <!-- JavaScript Application Logic -->
     <script>
         // ==========================================
-        // 1. Database Configuration
-        // ==========================================
-        const SUPABASE_URL = "https://ubwwagnlrhmyrxajqgbr.supabase.co";
-        const SUPABASE_KEY = "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVid3dhZ25scmhteXJ4YWpxZ2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNjU3MjAsImV4cCI6MjA5OTY0MTcyMH0.LYBX5jdvfbRucUjVYLrWblmr8yKJ8p662OiEy27_CFo";
-        
-        const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzekj2hNjR57OlK7rx7D6b_38wUIKzKkA6sMuCBfEhDdN73RWohpoTSGCRWRjQcRM3qHA/exec"; 
-
-        // ==========================================
-        // 2. UI State & Variables
+        // 1. UI State & Local Storage Variables
         // ==========================================
         let transactions = [];
         let categories = ['เงินเดือน', 'อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'อื่นๆ'];
         
         try {
             const savedTxs = JSON.parse(localStorage.getItem('wealthy_txs'));
-            if (savedTxs && savedTxs.length > 0) {
+            if (savedTxs && Array.isArray(savedTxs)) {
                 transactions = savedTxs;
             }
             const savedCats = JSON.parse(localStorage.getItem('wealthy_cats'));
-            if (savedCats && savedCats.length > 0) {
+            if (savedCats && Array.isArray(savedCats)) {
                 categories = savedCats;
             }
             if (!categories.includes('อื่นๆ')) categories.push('อื่นๆ');
@@ -320,8 +310,13 @@
         let activeTab = 'today'; 
         let pieChartInstance, lineChartInstance;
 
+        // Save data directly to LocalStorage
+        function saveData() { 
+            localStorage.setItem('wealthy_txs', JSON.stringify(transactions)); 
+        }
+
         // ==========================================
-        // 3. MAKE Allocator Logic (Locked 2500 & 500)
+        // 2. MAKE Allocator Logic (Locked 2500 & 500)
         // ==========================================
         window.calculateAllocation = function() {
             const amountInput = document.getElementById('calcIncomeAmount').value;
@@ -332,12 +327,11 @@
                 return;
             }
             
-            // ล็อกยอดเงินกิน 2500 และหุ้น 500 ตลอดกาล!
             const daily = 2500;
             const stock = 500;
             
             let savings = amount - daily - stock;
-            if (savings < 0) savings = 0; // ป้องกันยอดติดลบ
+            if (savings < 0) savings = 0;
             
             const dailyPct = ((daily / amount) * 100).toFixed(1);
             const stockPct = ((stock / amount) * 100).toFixed(1);
@@ -363,53 +357,7 @@
         };
 
         // ==========================================
-        // 4. Database Syncing Functions
-        // ==========================================
-        async function pushToSupabase(txData) {
-            if (!supabaseClient) return; 
-            const { error } = await supabaseClient.from('transactions').insert([{ 
-                tx_id: txData.id, date: txData.date, type: txData.type, 
-                category: txData.category, amount: txData.amount, note: txData.note 
-            }]);
-            if (error) console.error("Supabase Error:", error);
-        }
-
-        function pushToGoogleSheet(txData) {
-            fetch(GOOGLE_SCRIPT_URL, { 
-                method: 'POST',
-                body: JSON.stringify({
-                    id: txData.id, 
-                    date: txData.date,
-                    type: txData.type, 
-                    category: txData.category,
-                    amount: txData.amount, 
-                    note: txData.note
-                })
-            }).catch(err => console.error("Google Sheets Error:", err));
-        }
-
-        async function fetchFromDatabase() {
-            if (!supabaseClient) {
-                updateUI();
-                return;
-            }
-            
-            const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
-                
-            if (!error && data) {
-                if (data.length > 0) {
-                    transactions = data.map(item => ({
-                        id: item.tx_id, date: item.date, type: item.type, 
-                        category: item.category, amount: item.amount, note: item.note, images: []
-                    }));
-                    saveData(); 
-                }
-            }
-            updateUI(); 
-        }
-
-        // ==========================================
-        // 5. Core Navigation & App Logic
+        // 3. Navigation & Tab Logic
         // ==========================================
         function initDates() {
             const now = new Date();
@@ -470,7 +418,7 @@
         });
 
         // ==========================================
-        // 6. OCR & Slip Queue Handling
+        // 4. OCR & Slip Processing
         // ==========================================
         const batchUploader = document.getElementById('batchUploader');
         if (batchUploader) {
@@ -580,7 +528,7 @@
 
         const saveAllBtn = document.getElementById('saveAllSlipsBtn');
         if (saveAllBtn) {
-            saveAllBtn.addEventListener('click', async function(e) {
+            saveAllBtn.addEventListener('click', function(e) {
                 e.preventDefault(); 
                 savePendingQueueState(); 
                 if (pendingSlips.length === 0) return;
@@ -588,8 +536,6 @@
                 for (let s of pendingSlips) {
                     const tx = { id: Date.now() + Math.random(), type: s.type, category: s.category, amount: s.amount, note: s.note, date: s.date, images: [s.image] };
                     transactions.push(tx);
-                    await pushToSupabase(tx); 
-                    pushToGoogleSheet(tx); 
                 }
                 pendingSlips = []; 
                 saveData(); 
@@ -600,11 +546,11 @@
         }
 
         // ==========================================
-        // 7. Manual Form Listener (With Auto-Calculation Trigger)
+        // 5. Manual Form Submission
         // ==========================================
         const manualForm = document.getElementById('manualForm');
         if (manualForm) {
-            manualForm.addEventListener('submit', async function(e) {
+            manualForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const typeRadio = document.querySelector('input[name="mType"]:checked');
                 const mAmountInput = document.getElementById('mAmount');
@@ -621,10 +567,8 @@
                 };
                 
                 transactions.push(tx);
-                await pushToSupabase(tx); 
-                pushToGoogleSheet(tx); 
 
-                // 🔥 ฟีเจอร์เด็ด: ถ้าเป็น รายรับ + หมวดหมู่ "เงินเดือน" โยนเข้าเครื่องคิดเลข MAKE แล้วคำนวณทันที
+                // หากเป็น รายรับ + หมวดหมู่ "เงินเดือน" ให้ยิงยอดไปที่เครื่องคิดเลข MAKE ทันที
                 if (typeRadio.value === 'income' && mCategorySelect.value === 'เงินเดือน') {
                     const calcInput = document.getElementById('calcIncomeAmount');
                     if (calcInput) {
@@ -642,7 +586,7 @@
         }
 
         // ==========================================
-        // 8. Dynamic UI & Chart Rendering
+        // 6. UI & Chart Rendering
         // ==========================================
         function updateUI() {
             let filtered = []; 
@@ -751,7 +695,6 @@
             document.getElementById('totalExpense').innerText = '฿' + totalAllExp.toLocaleString();
             document.getElementById('netBalance').innerText = '฿' + (totalAllInc - totalAllExp).toLocaleString();
 
-            // คำนวณ % การใช้จ่าย
             let expenseRatio = 0;
             if (totalAllInc > 0) expenseRatio = (totalAllExp / totalAllInc) * 100;
             if (expenseRatio > 100) expenseRatio = 100;
@@ -815,7 +758,7 @@
         }
 
         // ==========================================
-        // 9. Helpers & Exporters
+        // 7. Helpers & Management
         // ==========================================
         function loadCategories() {
             const sel = document.getElementById('mCategory'); if (!sel) return; 
@@ -841,19 +784,19 @@
             }); 
         }
 
-        function saveData() { localStorage.setItem('wealthy_txs', JSON.stringify(transactions)); }
-        
-        window.deleteTx = async function(id) { 
+        window.deleteTx = function(id) { 
             if (confirm('ลบรายการนี้ใช่ไหม?')) { 
-                transactions = transactions.filter(t => t.id !== id); saveData(); updateUI(); 
-                if (supabaseClient) await supabaseClient.from('transactions').delete().eq('tx_id', id);
+                transactions = transactions.filter(t => t.id !== id); 
+                saveData(); 
+                updateUI(); 
             } 
         }
 
-        window.clearAllData = async function() { 
-            if (confirm('ระวัง! คุณต้องการล้างประวัติทั้งหมดใช่ไหม?')) { 
-                transactions = []; saveData(); updateUI(); 
-                if (supabaseClient) await supabaseClient.from('transactions').delete().neq('tx_id', 0);
+        window.clearAllData = function() { 
+            if (confirm('ระวัง! คุณต้องการล้างประวัติทั้งหมดใช่ไหม? ข้อมูลในเครื่องจะถูกลบทั้งหมด')) { 
+                transactions = []; 
+                saveData(); 
+                updateUI(); 
             } 
         }
 
@@ -868,11 +811,11 @@
         }
 
         // ==========================================
-        // 10. Initialization
+        // 8. Initialization
         // ==========================================
         initDates(); 
         loadCategories(); 
-        fetchFromDatabase(); 
+        updateUI(); 
     </script>
 </body>
 </html>
