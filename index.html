@@ -36,6 +36,7 @@
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
         <header class="mb-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
@@ -68,6 +69,7 @@
             </div>
         </header>
 
+        <!-- Charts Container -->
         <div id="chartsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
                 <h3 class="text-xs font-semibold text-gray-300 mb-3 text-center">สัดส่วนรายจ่ายแยกหมวดหมู่</h3>
@@ -83,6 +85,7 @@
             </div>
         </div>
 
+        <!-- VIEW: TODAY -->
         <div id="view-today" class="view-section active">
             <div class="glass-panel p-4 rounded-2xl mb-6 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-l-4 border-l-purple-500">
                 <h2 class="text-sm text-purple-300">หน้าปัจจุบันสำหรับบันทึกข้อมูล</h2>
@@ -90,7 +93,9 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column (Inputs) -->
                 <div class="lg:col-span-1 space-y-6">
+                    <!-- Slip Uploader -->
                     <div class="glass-panel p-6 rounded-2xl border border-purple-500/30 glow-purple">
                         <h2 class="text-base font-bold text-purple-400 mb-1">
                             <i class="fa-solid fa-expand mr-2"></i>อัปโหลดสแกนสลิป
@@ -116,6 +121,7 @@
                         <div id="pendingQueueArea" class="space-y-2 max-h-60 overflow-y-auto"></div>
                     </div>
 
+                    <!-- Manual Form -->
                     <div class="glass-panel p-6 rounded-2xl">
                         <h2 class="text-sm font-semibold mb-4 text-pink-400">
                             <i class="fa-solid fa-pen mr-2"></i>กรอกรายการด้วยตนเอง
@@ -139,17 +145,33 @@
                                 <select id="mCategory" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white"></select>
                                 <input type="number" id="mAmount" placeholder="ยอดเงิน (฿)" class="bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white" required>
                             </div>
-                            <input type="text" id="mNote" placeholder="หมายเหตุ (เช่น ค่าข้าว)..." class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white">
+                            <input type="text" id="mNote" placeholder="หมายเหตุ (เช่น เงินเดือน, ค่าข้าว)..." class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white">
                             <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold py-3 rounded-xl shadow-lg">
                                 บันทึกรายการ
                             </button>
                         </form>
                     </div>
+
+                    <!-- MAKE Allocator Calculator -->
+                    <div class="glass-panel p-6 rounded-2xl border border-blue-500/30">
+                        <h2 class="text-sm font-semibold mb-4 text-blue-400 flex justify-between items-center">
+                            <span><i class="fa-solid fa-calculator mr-2"></i>เครื่องคิดเลขจัดสรรเงิน (MAKE)</span>
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex gap-2">
+                                <input type="number" id="calcIncomeAmount" placeholder="ใส่ยอดเงินที่เข้า (฿)" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white">
+                                <button onclick="calculateAllocation()" class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-bold px-4 rounded-lg shadow-lg whitespace-nowrap">
+                                    คำนวณ %
+                                </button>
+                            </div>
+                            <div id="allocationResults" class="hidden flex-col gap-2 mt-2 text-xs"></div>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Right Column (Dashboard Summary & Today Table) -->
                 <div class="lg:col-span-2 space-y-6">
-                    <div class="flex flex-col gap-5">
-                        <!-- แถวบน: รายรับวันนี้ / รายจ่ายวันนี้ -->
+                    <div class="flex flex-col gap-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="glass-panel p-4 rounded-xl text-center border border-green-500/20">
                                 <span class="text-[11px] text-gray-400 block mb-1">
@@ -165,17 +187,13 @@
                             </div>
                         </div>
                         
-                        <!-- แถวล่าง: แบ่งเป็น 2 ช่อง รายรับสุทธิทั้งหมด / รายจ่ายสุทธิทั้งหมด (เด่นพิเศษ) -->
                         <div class="grid grid-cols-2 gap-4">
-                            <!-- ช่องรายรับสุทธิทั้งหมด -->
                             <div class="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 p-5 rounded-2xl text-center border border-emerald-500/40 glow-income-premium relative overflow-hidden">
                                 <span class="text-xs text-emerald-300 font-semibold tracking-wide block mb-1">
                                     <i class="fa-solid fa-money-bill-trend-up mr-1.5 text-emerald-400"></i>รายรับสุทธิทั้งหมด
                                 </span>
                                 <span id="totalIncome" class="text-2xl md:text-3xl font-black text-emerald-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">฿0</span>
                             </div>
-                            
-                            <!-- ช่องรายจ่ายสุทธิทั้งหมด -->
                             <div class="bg-gradient-to-br from-slate-900 via-rose-950 to-slate-950 p-5 rounded-2xl text-center border border-rose-500/40 glow-expense-premium relative overflow-hidden">
                                 <span class="text-xs text-rose-300 font-semibold tracking-wide block mb-1">
                                     <i class="fa-solid fa-money-bill-transfer mr-1.5 text-rose-400"></i>รายจ่ายสุทธิทั้งหมด
@@ -184,15 +202,27 @@
                             </div>
                         </div>
 
-                        <!-- แถบสรุปคงเหลือสุทธิ (เงินเหลือจริงๆ ในกระเป๋าปัจจุบัน) -->
+                        <!-- Net Balance -->
                         <div class="glass-panel py-3 px-5 rounded-xl flex justify-between items-center bg-slate-900/80 border border-purple-500/30">
                             <span class="text-xs text-purple-200 font-medium">
-                                <i class="fa-solid fa-wallet text-purple-400 mr-2"></i>เงินคงเหลือสุทธิในระบบตอนนี้ :
+                                <i class="fa-solid fa-wallet text-purple-400 mr-2"></i>เงินคงเหลือสุทธิในระบบ :
                             </span>
                             <span id="netBalance" class="text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-amber-300">฿0</span>
                         </div>
+
+                        <!-- Expense Ratio Progress Bar -->
+                        <div class="glass-panel py-3 px-5 rounded-xl bg-slate-900/80 border border-white/10">
+                            <div class="flex justify-between text-[11px] mb-1.5">
+                                <span class="text-gray-400"><i class="fa-solid fa-chart-pie mr-1"></i>อัตราส่วนการใช้เงิน (รายจ่ายเทียบรายรับทั้งหมด)</span>
+                                <span id="expenseRatioText" class="text-white font-bold">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                                <div id="expenseRatioBar" class="bg-gradient-to-r from-green-400 via-yellow-500 to-red-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Today's Table -->
                     <div class="glass-panel p-5 rounded-2xl h-[420px] overflow-hidden flex flex-col">
                         <h3 class="text-sm font-bold text-white border-b border-white/10 pb-3 mb-3">รายการของวันนี้</h3>
                         <div class="overflow-y-auto flex-1 pr-2">
@@ -214,6 +244,7 @@
             </div>
         </div>
 
+        <!-- VIEW: HISTORY -->
         <div id="view-history" class="view-section">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div class="glass-panel p-5 rounded-2xl flex flex-col justify-center items-center">
@@ -253,6 +284,7 @@
         </div>
     </div>
 
+    <!-- JavaScript Application Logic -->
     <script>
         // ==========================================
         // 1. Database Configuration
@@ -267,7 +299,7 @@
         // 2. UI State & Variables
         // ==========================================
         let transactions = [];
-        let categories = ['อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'เงินเดือน', 'อื่นๆ'];
+        let categories = ['เงินเดือน', 'อาหาร', 'เดินทาง', 'ช้อปปิ้ง', 'อื่นๆ'];
         
         try {
             const savedTxs = JSON.parse(localStorage.getItem('wealthy_txs'));
@@ -278,9 +310,8 @@
             if (savedCats && savedCats.length > 0) {
                 categories = savedCats;
             }
-            if (!categories.includes('อื่นๆ')) {
-                categories.push('อื่นๆ');
-            }
+            if (!categories.includes('อื่นๆ')) categories.push('อื่นๆ');
+            if (!categories.includes('เงินเดือน')) categories.unshift('เงินเดือน');
         } catch (e) {
             console.error("Error loading local storage", e);
         }
@@ -290,7 +321,49 @@
         let pieChartInstance, lineChartInstance;
 
         // ==========================================
-        // 3. Database Functions
+        // 3. MAKE Allocator Logic (Locked 2500 & 500)
+        // ==========================================
+        window.calculateAllocation = function() {
+            const amountInput = document.getElementById('calcIncomeAmount').value;
+            const amount = parseFloat(amountInput);
+            
+            if (!amount || amount <= 0) {
+                alert("กรุณาใส่ยอดเงินที่ถูกต้อง");
+                return;
+            }
+            
+            // ล็อกยอดเงินกิน 2500 และหุ้น 500 ตลอดกาล!
+            const daily = 2500;
+            const stock = 500;
+            
+            let savings = amount - daily - stock;
+            if (savings < 0) savings = 0; // ป้องกันยอดติดลบ
+            
+            const dailyPct = ((daily / amount) * 100).toFixed(1);
+            const stockPct = ((stock / amount) * 100).toFixed(1);
+            const savingsPct = ((savings / amount) * 100).toFixed(1);
+            
+            const resultsDiv = document.getElementById('allocationResults');
+            resultsDiv.innerHTML = `
+                <div class="flex justify-between items-center p-2.5 bg-slate-800/80 rounded-lg border border-white/5">
+                    <span class="text-gray-300">🍗 เงินกินใช้ (${dailyPct}%):</span>
+                    <span class="text-white font-bold">฿${daily.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between items-center p-2.5 bg-slate-800/80 rounded-lg border border-white/5">
+                    <span class="text-gray-300">📈 หุ้น NVIDIA (${stockPct}%):</span>
+                    <span class="text-white font-bold">฿${stock.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between items-center p-2.5 bg-purple-900/40 rounded-lg border border-purple-500/50">
+                    <span class="text-purple-300 font-bold">🧊 ตู้เย็น/เงินออม (${savingsPct}%):</span>
+                    <span class="text-purple-400 font-black">฿${savings.toLocaleString()}</span>
+                </div>
+            `;
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.classList.add('flex');
+        };
+
+        // ==========================================
+        // 4. Database Syncing Functions
         // ==========================================
         async function pushToSupabase(txData) {
             if (!supabaseClient) return; 
@@ -336,7 +409,7 @@
         }
 
         // ==========================================
-        // 4. Core UI Functions
+        // 5. Core Navigation & App Logic
         // ==========================================
         function initDates() {
             const now = new Date();
@@ -397,7 +470,7 @@
         });
 
         // ==========================================
-        // 5. Image & AI Processing
+        // 6. OCR & Slip Queue Handling
         // ==========================================
         const batchUploader = document.getElementById('batchUploader');
         if (batchUploader) {
@@ -420,7 +493,7 @@
                         
                         const ret = await Tesseract.recognize(base64Image, 'tha+eng');
                         let finalAmount = 0;
-                        const matches = ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d.2\b/g) || ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g);
+                        const matches = ret.data.text.match(/\b\d{1,3}(?:,\d{3})*\.\d{2}\b/g);
                         if (matches) finalAmount = Math.max(...matches.map(m => parseFloat(m.replace(/,/g, ''))));
                         
                         pendingSlips.push({
@@ -526,6 +599,9 @@
             });
         }
 
+        // ==========================================
+        // 7. Manual Form Listener (With Auto-Calculation Trigger)
+        // ==========================================
         const manualForm = document.getElementById('manualForm');
         if (manualForm) {
             manualForm.addEventListener('submit', async function(e) {
@@ -537,15 +613,26 @@
                 
                 if (!typeRadio || !mAmountInput || !mCategorySelect) return;
                 
+                const amountValue = parseFloat(mAmountInput.value) || 0;
                 const tx = { 
                     id: Date.now(), type: typeRadio.value, category: mCategorySelect.value, 
-                    amount: parseFloat(mAmountInput.value) || 0, note: mNoteInput.value || '-', 
+                    amount: amountValue, note: mNoteInput.value || '-', 
                     date: new Date().toISOString(), images: [] 
                 };
                 
                 transactions.push(tx);
                 await pushToSupabase(tx); 
                 pushToGoogleSheet(tx); 
+
+                // 🔥 ฟีเจอร์เด็ด: ถ้าเป็น รายรับ + หมวดหมู่ "เงินเดือน" โยนเข้าเครื่องคิดเลข MAKE แล้วคำนวณทันที
+                if (typeRadio.value === 'income' && mCategorySelect.value === 'เงินเดือน') {
+                    const calcInput = document.getElementById('calcIncomeAmount');
+                    if (calcInput) {
+                        calcInput.value = amountValue;
+                        calculateAllocation();
+                    }
+                }
+                
                 this.reset(); 
                 document.getElementById('typeExpense').checked = true;
                 saveData(); 
@@ -555,7 +642,7 @@
         }
 
         // ==========================================
-        // 6. Rendering & Charts
+        // 8. Dynamic UI & Chart Rendering
         // ==========================================
         function updateUI() {
             let filtered = []; 
@@ -644,7 +731,6 @@
         }
 
         function renderTodayView(data) {
-            // 1. คำนวณรายรับและรายจ่ายแยกของวันนี้
             let todayInc = 0;
             let todayExp = 0;
             data.forEach(t => { 
@@ -652,7 +738,6 @@
                 else todayExp += t.amount;
             });
             
-            // 2. คำนวณรายรับทั้งหมด และรายจ่ายทั้งหมดในระบบทั้งหมด (สะสมตั้งแต่ต้น)
             let totalAllInc = 0;
             let totalAllExp = 0;
             transactions.forEach(t => {
@@ -660,16 +745,28 @@
                 else totalAllExp += t.amount;
             });
             
-            // 3. สรุปตัวเลขลงฟิลด์หน้าแรก
             document.getElementById('todayIncome').innerText = '฿' + todayInc.toLocaleString();
             document.getElementById('todayExpense').innerText = '฿' + todayExp.toLocaleString();
-            
-            // ช่องสุทธิที่แยกเป็น 2 ฝั่ง (รับทั้งหมด / จ่ายทั้งหมด)
             document.getElementById('totalIncome').innerText = '฿' + totalAllInc.toLocaleString();
             document.getElementById('totalExpense').innerText = '฿' + totalAllExp.toLocaleString();
-            
-            // คำนวณยอดเงินคงเหลือสุทธิจริงในระบบปัจจุบัน
             document.getElementById('netBalance').innerText = '฿' + (totalAllInc - totalAllExp).toLocaleString();
+
+            // คำนวณ % การใช้จ่าย
+            let expenseRatio = 0;
+            if (totalAllInc > 0) expenseRatio = (totalAllExp / totalAllInc) * 100;
+            if (expenseRatio > 100) expenseRatio = 100;
+            
+            document.getElementById('expenseRatioText').innerText = expenseRatio.toFixed(1) + '%';
+            
+            const bar = document.getElementById('expenseRatioBar');
+            bar.style.width = expenseRatio + '%';
+            if (expenseRatio < 50) {
+                bar.className = "bg-gradient-to-r from-green-400 to-emerald-500 h-2.5 rounded-full transition-all duration-500";
+            } else if (expenseRatio < 80) {
+                bar.className = "bg-gradient-to-r from-yellow-400 to-orange-500 h-2.5 rounded-full transition-all duration-500";
+            } else {
+                bar.className = "bg-gradient-to-r from-orange-500 to-red-600 h-2.5 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+            }
 
             const tbody = document.getElementById('todayTableBody'); if (!tbody) return; 
             tbody.innerHTML = '';
@@ -718,7 +815,7 @@
         }
 
         // ==========================================
-        // 7. Utilities
+        // 9. Helpers & Exporters
         // ==========================================
         function loadCategories() {
             const sel = document.getElementById('mCategory'); if (!sel) return; 
@@ -771,12 +868,11 @@
         }
 
         // ==========================================
-        // 8. Initialization
+        // 10. Initialization
         // ==========================================
         initDates(); 
         loadCategories(); 
         fetchFromDatabase(); 
-        
     </script>
 </body>
 </html>
