@@ -533,15 +533,30 @@
                 savePendingQueueState(); 
                 if (pendingSlips.length === 0) return;
                 
-                for (let s of pendingSlips) {
-                    const tx = { id: Date.now() + Math.random(), type: s.type, category: s.category, amount: s.amount, note: s.note, date: s.date, images: [s.image] };
-                    transactions.push(tx);
+                try {
+                    for (let s of pendingSlips) {
+                        const tx = { 
+                            id: Date.now() + Math.random(), 
+                            type: s.type, 
+                            category: s.category, 
+                            amount: s.amount, 
+                            note: s.note, 
+                            date: s.date, 
+                            images: [] // ลบ s.image ออก ป้องกันปัญหา LocalStorage เต็ม
+                        };
+                        transactions.push(tx);
+                    }
+                    
+                    saveData(); // บันทึกลงเครื่อง
+                    pendingSlips = []; // เคลียร์คิว
+                    updateUI(); // อัปเดตหน้าจอ
+                    renderPendingQueue(); // ล้างกล่องคิว
+                    alert('✅ บันทึกรายการสลิปเรียบร้อยแล้ว!');
+                    
+                } catch (error) {
+                    console.error("Save Error:", error);
+                    alert("❌ ไม่สามารถบันทึกได้! พื้นที่จัดเก็บข้อมูลของเบราว์เซอร์เต็ม ลองกดล้างประวัติการทำรายการเก่าๆ ก่อนครับ");
                 }
-                pendingSlips = []; 
-                saveData(); 
-                updateUI(); 
-                renderPendingQueue();
-                alert('✅ บันทึกรายการสลิปเรียบร้อยแล้ว!');
             });
         }
 
